@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>玉掛け質量計算｜吊り角度による張力増加までわかる</title>
+<meta name="description" content="材質と寸法から質量を計算し、吊り角度によるワイヤ1本あたりの張力まで出します。登録なし・広告なし・オフラインでも動きます。">
+<style>
+  :root {
+    --navy: #2C5A78;
+    --navy-dark: #21455c;
+    --yellow: #D9A400;
+    --rust: #AB4526;
+    --danger: #C0392B;
+    --paper: #F5F2EA;
+    --ink: #1c2530;
+    --ink-soft: #55616e;
+    --line: #d8d2c4;
+    --card: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #161b21; --ink: #e8eaed; --ink-soft: #a4adb8;
+      --line: #2f3944; --card: #1e242c; --navy: #4a86ad; --navy-dark: #3a6d8f;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0; padding: 0 0 40px; background: var(--paper); color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN",
+                 "Yu Gothic", "Meiryo", sans-serif;
+    line-height: 1.6; -webkit-text-size-adjust: 100%;
+  }
+  header {
+    background: var(--navy); color: #fff; padding: 18px 16px 16px;
+    border-bottom: 5px solid var(--yellow);
+  }
+  h1 { font-size: 1.22rem; margin: 0 0 4px; font-weight: 800; }
+  .sub { font-size: .8rem; opacity: .9; margin: 0; }
+  main { max-width: 640px; margin: 0 auto; padding: 0 14px; }
+
+  section { margin-top: 20px; }
+  .label {
+    font-size: .82rem; font-weight: 700; color: var(--ink-soft);
+    margin: 0 0 8px; letter-spacing: .04em;
+  }
+  .grid { display: grid; gap: 7px; }
+  .g2 { grid-template-columns: repeat(2, 1fr); }
+  .g3 { grid-template-columns: repeat(3, 1fr); }
+  .g4 { grid-template-columns: repeat(4, 1fr); }
+
+  button.opt {
+    appearance: none; border: 2px solid var(--line); background: var(--card);
+    color: var(--ink); border-radius: 9px; padding: 12px 4px;
+    font-size: .95rem; font-weight: 700; cursor: pointer; font-family: inherit;
+    transition: transform .06s, border-color .12s, background .12s; min-height: 46px;
+  }
+  button.opt:active { transform: scale(.96); }
+  button.opt.on { border-color: var(--navy); background: var(--navy); color: #fff; }
+  button.opt .tiny { display:block; font-size:.62rem; font-weight:500; opacity:.75; margin-top:2px; }
+  button.opt.warn.on { background: var(--rust); border-color: var(--rust); }
+  button.opt.danger.on { background: var(--danger); border-color: var(--danger); }
+  button.opt.off {
+    opacity: .38; cursor: not-allowed; background: var(--card);
+    border-color: var(--line); color: var(--ink-soft);
+  }
+  button.opt.off.on { background: var(--card); color: var(--ink-soft); }
+
+  .inputs { display: grid; gap: 9px; }
+  .field { display: flex; align-items: center; gap: 9px; }
+  .field label { flex: 0 0 92px; font-size: .85rem; font-weight: 700; color: var(--ink-soft); }
+  .field input {
+    flex: 1; padding: 11px 12px; font-size: 1.05rem; border: 2px solid var(--line);
+    border-radius: 8px; background: var(--card); color: var(--ink);
+    font-family: inherit; min-width: 0; font-variant-numeric: tabular-nums;
+  }
+  .field input:focus { outline: none; border-color: var(--navy); }
+  .field .unit { flex: 0 0 auto; font-size: .82rem; color: var(--ink-soft); font-weight: 700; }
+
+  .result { margin-top: 22px; background: var(--card); border: 2px solid var(--line);
+            border-radius: 13px; overflow: hidden; }
+  .result-head {
+    background: var(--navy-dark); color: #fff; padding: 9px 14px;
+    font-size: .82rem; font-weight: 700;
+  }
+  .result-body { padding: 16px 14px; text-align: center; }
+  .val-main { font-size: 3rem; font-weight: 800; line-height: 1.05;
+              font-variant-numeric: tabular-nums;
+              display: flex; align-items: baseline; justify-content: center; gap: 6px; }
+  .val-main .unit { font-size: 1.1rem; font-weight: 700; color: var(--ink-soft); }
+  .val-t { font-size: 1.05rem; color: var(--ink-soft); margin-top: 4px; font-weight: 700; }
+
+  .tension { border-top: 1px dashed var(--line); padding: 14px; }
+  .tension-title { font-size: .8rem; font-weight: 700; margin: 0 0 10px; color: var(--ink-soft); }
+  .tension-val { font-size: 2.1rem; font-weight: 800; font-variant-numeric: tabular-nums;
+                 color: var(--rust);
+                 display: flex; align-items: baseline; justify-content: center; gap: 5px; }
+  .tension-val .unit { font-size: .9rem; }
+  .tension-sub { text-align: center; font-size: .8rem; color: var(--ink-soft); margin-top: 3px; }
+  .coef-badge {
+    display: inline-block; margin-top: 9px; padding: 4px 12px; border-radius: 999px;
+    font-size: .78rem; font-weight: 700; background: rgba(128,128,128,.15);
+  }
+  .coef-badge.lv2 { background: #fdf0d5; color: #8a6200; }
+  .coef-badge.lv3 { background: #fbe0d8; color: #9c3a22; }
+  .coef-badge.lv4 { background: var(--danger); color: #fff; }
+
+  .angle-msg { margin-top: 10px; font-size: .8rem; padding: 9px 11px; border-radius: 7px;
+               background: rgba(128,128,128,.1); }
+  .angle-msg.lv3 { background: #fbe0d8; color: #7d2e1a; }
+  .angle-msg.lv4 { background: var(--danger); color: #fff; font-weight: 700; }
+  .rope-msg { margin-top: 10px; font-size: .8rem; padding: 9px 11px; border-radius: 7px;
+              background: #fdf0d5; color: #8a6200; }
+  /* ダークモードでは明るい警告色が浮くので、暗い地に読める文字色へ差し替える */
+  @media (prefers-color-scheme: dark) {
+    .rope-msg { background: #2c2410; color: #e8dcc0; }
+    .coef-badge.lv2 { background: #2c2410; color: #e5c163; }
+    .coef-badge.lv3 { background: #3a2119; color: #f0b5a2; }
+    .angle-msg.lv3 { background: #3a2119; color: #f0b5a2; }
+  }
+
+  .detail { border-top: 1px dashed var(--line); padding: 11px 14px; font-size: .76rem;
+            color: var(--ink-soft); display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px; }
+  .detail b { color: var(--ink); font-weight: 700; }
+
+  .warn { margin-top: 18px; background: #fdecea; border-left: 5px solid var(--danger);
+          padding: 12px 14px; font-size: .79rem; border-radius: 0 8px 8px 0; color: #6e2018; }
+  @media (prefers-color-scheme: dark) { .warn { background: #331915; color: #f2c9c2; } }
+  .warn strong { display: block; margin-bottom: 5px; font-size: .85rem; }
+  .warn ul { margin: 6px 0 0; padding-left: 18px; }
+
+  details { margin-top: 15px; background: var(--card); border: 1px solid var(--line);
+            border-radius: 9px; padding: 11px 13px; font-size: .8rem; }
+  summary { cursor: pointer; font-weight: 700; font-size: .84rem; }
+  details p, details li { color: var(--ink-soft); }
+  details table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .75rem; }
+  details th, details td { border: 1px solid var(--line); padding: 4px 6px; text-align: center; }
+  details th { background: rgba(128,128,128,.12); }
+  code { background: rgba(128,128,128,.14); padding: 1px 5px; border-radius: 4px; font-size: .92em; }
+
+  footer { margin: 26px auto 0; max-width: 640px; padding: 14px; border-top: 1px solid var(--line);
+           font-size: .74rem; color: var(--ink-soft); text-align: center; }
+  footer a { color: var(--navy); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>玉掛け質量計算</h1>
+  <p class="sub">吊り角度による張力増加まで出る／登録なし・広告なし・オフライン可</p>
+</header>
+
+<main>
+
+  <section>
+    <p class="label">① 材質</p>
+    <div class="grid g4" id="mats"></div>
+  </section>
+
+  <section>
+    <p class="label">② 形状</p>
+    <div class="grid g3" id="shapes"></div>
+  </section>
+
+  <section>
+    <p class="label">③ 寸法</p>
+    <div class="inputs" id="dims"></div>
+    <div class="rope-msg" id="dimMsg" style="display:none"></div>
+  </section>
+
+  <div class="result">
+    <div class="result-head">推定質量</div>
+    <div class="result-body">
+      <div class="val-main"><span id="kg">785</span><span class="unit">kg</span></div>
+      <div class="val-t"><span id="ton">0.79</span> t</div>
+    </div>
+
+    <div class="tension">
+      <p class="tension-title">④ 吊り本数と吊り角度</p>
+      <div class="grid g4" id="ropes" style="margin-bottom:8px"></div>
+      <div class="grid g3" id="angles"></div>
+
+      <div style="margin-top:14px">
+        <div class="tension-val"><span id="tension">555</span><span class="unit">kgf</span></div>
+        <div class="tension-sub">ワイヤ1本あたりにかかる力（<span id="tensionN">5443</span> N）</div>
+        <div style="text-align:center"><span class="coef-badge" id="coef">張力係数 1.414倍</span></div>
+        <div class="angle-msg" id="angleMsg"></div>
+        <div class="rope-msg" id="ropeMsg" style="display:none"></div>
+      </div>
+    </div>
+
+    <div class="detail">
+      <div>体積 <b id="vol">0.100</b> <span id="volUnit">m³</span></div>
+      <div>密度 <b id="dens">7850</b> kg/m³</div>
+      <div>必要破断荷重 <b id="breakLoad">3.33</b> t</div>
+      <div>安全率 <b>6</b>（法定）</div>
+    </div>
+  </div>
+
+  <div class="warn">
+    <strong>玉掛けは有資格者が行う法定業務です</strong>
+    この計算は<b>目安</b>です。実際の作業は必ず玉掛け作業主任者・有資格者の判断に従ってください。
+    <ul>
+      <li>実物の質量は、付属品・内容物・付着物・水分で計算値とずれます</li>
+      <li>重心の偏りは考慮していません</li>
+      <li>ワイヤの劣化、端末処理、シャックル等の金具強度は含みません</li>
+    </ul>
+  </div>
+
+  <details>
+    <summary>なぜ角度が開くと危険なのか</summary>
+    <p>
+      2本吊りのとき、ワイヤ1本にかかる力は<b>荷重の半分ではありません</b>。
+      吊り角度が開くほど、水平方向の分力が増えて張力が跳ね上がります。
+    </p>
+    <p><code>1本の張力 = (質量 × 9.80665 ÷ 本数) ÷ cos(吊り角度 ÷ 2)</code></p>
+    <p>
+      ただし<b>3本吊り・4本吊りでも「本数＝2」として計算</b>しています。
+      本数を増やしても荷重は均等にかかりません。スリング長のわずかな差や
+      重心の偏りで、実際には2本に集中することがあるためです。
+    </p>
+    <table>
+      <tr><th>吊り角度</th><th>張力係数</th><th>目安</th></tr>
+      <tr><td>0°</td><td>1.00</td><td>荷重がそのまま分割</td></tr>
+      <tr><td>30°</td><td>1.035</td><td>ほぼ問題なし</td></tr>
+      <tr><td>60°</td><td>1.155</td><td>ここまでが推奨</td></tr>
+      <tr><td>90°</td><td>1.414</td><td>+41%。要注意</td></tr>
+      <tr><td>120°</td><td><b>2.00</b></td><td><b>2倍。原則禁止</b></td></tr>
+      <tr><td>150°</td><td>3.86</td><td>論外</td></tr>
+    </table>
+    <p style="margin-top:8px">
+      <b>60度以内が原則。</b>スリングを長くするか、当て物を使って角度を落としてください。
+    </p>
+  </details>
+
+  <details>
+    <summary>密度と計算式</summary>
+    <table>
+      <tr><th>材質</th><th>密度 kg/m³</th></tr>
+      <tr><td>鋼（鉄）</td><td>7850</td></tr>
+      <tr><td>ステンレス</td><td>7930</td></tr>
+      <tr><td>アルミ</td><td>2700</td></tr>
+      <tr><td>銅</td><td>8960</td></tr>
+      <tr><td>コンクリート</td><td>2300</td></tr>
+      <tr><td>木材（乾燥）</td><td>400</td></tr>
+    </table>
+    <p style="margin-top:8px">
+      角材・板：<code>幅×高さ×長さ</code>／丸棒：<code>π×(径/2)²×長さ</code>／
+      パイプ：<code>π×((外径/2)²−(内径/2)²)×長さ</code>
+    </p>
+    <p>必要破断荷重は、クレーン等安全規則の玉掛用ワイヤロープ安全係数<b>6</b>で算出しています。</p>
+  </details>
+
+</main>
+
+<footer>
+  作った人 → <a href="https://x.com/genba_dougubako" target="_blank" rel="noopener">@genba_dougubako</a><br>
+  点検表・KYシートの記入例つきテンプレも作ってます
+</footer>
+
+<script>
+(function () {
+  "use strict";
+  var G = 9.80665, SAFETY = 6;
+
+  var MATS = [
+    { n: "鋼",     d: 7850 },
+    { n: "ステン", d: 7930 },
+    { n: "アルミ", d: 2700 },
+    { n: "銅",     d: 8960 },
+    { n: "コンクリ", d: 2300 },
+    { n: "木材",   d: 400  }
+  ];
+  var SHAPES = [
+    { n: "角材・板", fields: [["w","幅"],["h","高さ"],["l","長さ"]] },
+    { n: "丸棒",     fields: [["od","直径"],["l","長さ"]] },
+    { n: "パイプ",   fields: [["od","外径"],["id","内径"],["l","長さ"]] }
+  ];
+  var ROPES = [1, 2, 3, 4];
+  var ANGLES = [
+    { a: 0,   lv: 1 }, { a: 30,  lv: 1 }, { a: 60,  lv: 2 },
+    { a: 90,  lv: 3 }, { a: 120, lv: 4 }, { a: 150, lv: 4 }
+  ];
+  var MSG = {
+    1: "余裕のある角度です。",
+    2: "推奨の上限（60度）です。これ以上は開かないこと。",
+    3: "張力が4割増しています。スリングを長くして角度を落としてください。",
+    4: "危険域です。荷重の2倍以上がワイヤにかかります。原則この角度で吊らないこと。"
+  };
+
+  var iMat = 0, iShape = 0, iRope = 1, iAngle = 3;
+  var dims = { w: 1000, h: 500, l: 200, od: 100, id: 80 };
+
+  function volume() {
+    var s = SHAPES[iShape], m = 1e-9; // mm³ -> m³
+    if (iShape === 0) return dims.w * dims.h * dims.l * m;
+    if (iShape === 1) return Math.PI * Math.pow(dims.od / 2, 2) * dims.l * m;
+    var ro = dims.od / 2, ri = dims.id / 2;
+    if (ri >= ro) return 0;
+    return Math.PI * (ro * ro - ri * ri) * dims.l * m;
+  }
+  function fmt(v, dec) {
+    if (!isFinite(v)) return "--";
+    if (v >= 1000) return v.toFixed(0);
+    if (v >= 100) return v.toFixed(dec > 1 ? 1 : dec);
+    return v.toFixed(dec);
+  }
+
+  function build(el, items, cur, pick, cls, disabled) {
+    el.innerHTML = "";
+    items.forEach(function (it, i) {
+      var b = document.createElement("button");
+      b.type = "button";
+      var extra = "";
+      if (cls === "angle" && !disabled) {
+        if (it.lv === 3) extra = " warn";
+        if (it.lv === 4) extra = " danger";
+      }
+      b.className = "opt" + extra + (i === cur ? " on" : "") + (disabled ? " off" : "");
+      if (cls === "rope") {
+        // 3本以上は計算上2本として扱うので、ボタン自体にそう書いておく
+        b.innerHTML = it + "本" + (it >= 3 ? '<span class="tiny">2本で計算</span>' : "");
+      } else {
+        b.textContent = (cls === "angle") ? it.a + "°" : it.n;
+      }
+      if (disabled) {
+        b.disabled = true;
+      } else {
+        b.addEventListener("click", function () { pick(i); });
+      }
+      el.appendChild(b);
+    });
+  }
+
+  function buildDims() {
+    var wrap = document.getElementById("dims");
+    wrap.innerHTML = "";
+    SHAPES[iShape].fields.forEach(function (f) {
+      var key = f[0], lab = f[1];
+      var row = document.createElement("div");
+      row.className = "field";
+      var l = document.createElement("label");
+      l.textContent = lab;
+      var inp = document.createElement("input");
+      inp.type = "number"; inp.inputMode = "decimal"; inp.min = "0";
+      inp.value = dims[key];
+      inp.addEventListener("input", function () {
+        var v = parseFloat(inp.value);
+        dims[key] = isNaN(v) || v < 0 ? 0 : v;
+        render();
+      });
+      var u = document.createElement("span");
+      u.className = "unit"; u.textContent = "mm";
+      row.appendChild(l); row.appendChild(inp); row.appendChild(u);
+      wrap.appendChild(row);
+    });
+  }
+
+  function render() {
+    var mat = MATS[iMat];
+    var vol = volume();
+    var kg = vol * mat.d;
+
+    document.getElementById("kg").textContent = fmt(kg, 1);
+    document.getElementById("ton").textContent = (kg / 1000).toFixed(2);
+    // 小さすぎて 0.0000 になる場合は cm³ に切り替える
+    var volEl = document.getElementById("vol");
+    var volUnit = document.getElementById("volUnit");
+    if (vol > 0 && vol < 0.0001) {
+      volEl.textContent = (vol * 1e6).toFixed(1);
+      volUnit.textContent = "cm³";
+    } else {
+      volEl.textContent = vol.toFixed(4);
+      volUnit.textContent = "m³";
+    }
+    document.getElementById("dens").textContent = mat.d;
+
+    var n = ROPES[iRope];
+    // 1本吊りに吊り角度は存在しない。角度を無視して係数1とする
+    var single = (n === 1);
+    // 3本・4本で吊っても荷重は均等に分配されない。スリング長の誤差や重心の偏りで
+    // 2本に集中しうるため、安全側に倒して計算上は2本吊りとして扱う
+    var nCalc = Math.min(n, 2);
+    var ang = single ? { a: 0, lv: 1 } : ANGLES[iAngle];
+    var coef = single ? 1 : (1 / Math.cos(ang.a / 2 * Math.PI / 180));
+    var tN = (kg * G / nCalc) * coef;
+
+    document.getElementById("tension").textContent = fmt(tN / G, 1);
+    document.getElementById("tensionN").textContent = fmt(tN, 0);
+    document.getElementById("breakLoad").textContent = (tN * SAFETY / G / 1000).toFixed(2);
+
+    var badge = document.getElementById("coef");
+    badge.textContent = "張力係数 " + coef.toFixed(3) + " 倍";
+    badge.className = "coef-badge lv" + ang.lv;
+
+    var msg = document.getElementById("angleMsg");
+    msg.textContent = single ? "1本吊りでは吊り角度は発生しません（荷重がそのままかかります）。" : MSG[ang.lv];
+    msg.className = "angle-msg lv" + ang.lv;
+
+    var rmsg = document.getElementById("ropeMsg");
+    if (n >= 3) {
+      rmsg.style.display = "";
+      rmsg.textContent = n + "本で吊っても、スリング長のわずかな差や重心の偏りで、"
+        + "荷重は均等にかかりません。実際には2本に集中することがあるため、"
+        + "安全側に見て2本吊りとして計算しています。";
+    } else {
+      rmsg.style.display = "none";
+    }
+
+    // パイプで内径≧外径だと質量が0になる。打ち間違いに気づけるよう理由を出す
+    var dmsg = document.getElementById("dimMsg");
+    if (iShape === 2 && dims.od > 0 && dims.id >= dims.od) {
+      dmsg.style.display = "";
+      dmsg.textContent = "内径が外径以上になっています。寸法を確かめてください（このままでは質量を計算できません）。";
+    } else {
+      dmsg.style.display = "none";
+    }
+
+    build(document.getElementById("mats"),   MATS,   iMat,   function (i) { iMat = i; render(); });
+    build(document.getElementById("shapes"), SHAPES, iShape, function (i) { iShape = i; buildDims(); render(); });
+    build(document.getElementById("ropes"),  ROPES,  iRope,  function (i) { iRope = i; render(); }, "rope");
+    build(document.getElementById("angles"), ANGLES, (single ? -1 : iAngle),
+          function (i) { iAngle = i; render(); }, "angle", single);
+  }
+
+  buildDims();
+  render();
+})();
+</script>
+
+</body>
+</html>

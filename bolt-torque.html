@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ボルト締付トルク早見表｜N・m と kgf・m を同時表示</title>
+<meta name="description" content="ボルトサイズと強度区分を選ぶだけで締付トルクの目安が出ます。N・mとkgf・mを同時表示。登録なし・広告なし・オフラインでも動きます。">
+<style>
+  :root {
+    --navy: #2C5A78;
+    --navy-dark: #21455c;
+    --yellow: #D9A400;
+    --rust: #AB4526;
+    --paper: #F5F2EA;
+    --ink: #1c2530;
+    --ink-soft: #55616e;
+    --line: #d8d2c4;
+    --card: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper: #161b21;
+      --ink: #e8eaed;
+      --ink-soft: #a4adb8;
+      --line: #2f3944;
+      --card: #1e242c;
+      --navy: #4a86ad;
+      --navy-dark: #3a6d8f;
+    }
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body {
+    margin: 0;
+    padding: 0 0 40px;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Kaku Gothic ProN",
+                 "Yu Gothic", "Meiryo", sans-serif;
+    line-height: 1.6;
+    -webkit-text-size-adjust: 100%;
+  }
+  header {
+    background: var(--navy);
+    color: #fff;
+    padding: 18px 16px 16px;
+    border-bottom: 5px solid var(--yellow);
+  }
+  h1 { font-size: 1.22rem; margin: 0 0 4px; font-weight: 800; letter-spacing: .02em; }
+  .sub { font-size: .8rem; opacity: .9; margin: 0; }
+  main { max-width: 640px; margin: 0 auto; padding: 0 14px; }
+
+  section { margin-top: 20px; }
+  .label {
+    font-size: .82rem; font-weight: 700; color: var(--ink-soft);
+    margin: 0 0 8px; letter-spacing: .04em;
+  }
+  .grid { display: grid; gap: 7px; }
+  .grid-size { grid-template-columns: repeat(4, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+
+  button.opt {
+    appearance: none;
+    border: 2px solid var(--line);
+    background: var(--card);
+    color: var(--ink);
+    border-radius: 9px;
+    padding: 13px 4px;
+    font-size: 1rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform .06s, border-color .12s, background .12s;
+    font-family: inherit;
+    min-height: 48px;
+  }
+  button.opt:active { transform: scale(.96); }
+  button.opt.on {
+    border-color: var(--navy);
+    background: var(--navy);
+    color: #fff;
+  }
+  button.opt .tiny { display: block; font-size: .64rem; font-weight: 500; opacity: .75; margin-top: 2px; }
+
+  .result {
+    margin-top: 22px;
+    background: var(--card);
+    border: 2px solid var(--line);
+    border-radius: 13px;
+    overflow: hidden;
+  }
+  .result-head {
+    background: var(--navy-dark);
+    color: #fff;
+    padding: 9px 14px;
+    font-size: .82rem;
+    font-weight: 700;
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+  }
+  .result-body { padding: 16px 14px 18px; text-align: center; }
+  .val-main {
+    font-size: 3.1rem; font-weight: 800; line-height: 1.05;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    display: flex; align-items: baseline; justify-content: center; gap: 6px;
+  }
+  .val-main .unit { font-size: 1.15rem; font-weight: 700; color: var(--ink-soft); }
+  .val-sub {
+    margin-top: 7px; font-size: 1.75rem; font-weight: 700;
+    color: var(--rust); font-variant-numeric: tabular-nums;
+    display: flex; align-items: baseline; justify-content: center; gap: 5px;
+  }
+  .val-sub .unit { font-size: .92rem; }
+  .kgf-note { font-size: .7rem; color: var(--ink-soft); margin-top: 3px; }
+
+  .detail {
+    border-top: 1px dashed var(--line);
+    padding: 11px 14px;
+    font-size: .76rem;
+    color: var(--ink-soft);
+    display: grid; grid-template-columns: 1fr 1fr; gap: 5px 12px;
+  }
+  .detail b { color: var(--ink); font-weight: 700; }
+
+  .warn {
+    margin-top: 18px;
+    background: #fff8e6;
+    border-left: 5px solid var(--yellow);
+    padding: 12px 14px;
+    font-size: .79rem;
+    border-radius: 0 8px 8px 0;
+    color: #4a3c14;
+  }
+  @media (prefers-color-scheme: dark) {
+    .warn { background: #2c2410; color: #e8dcc0; }
+  }
+  .warn strong { display: block; margin-bottom: 4px; font-size: .84rem; }
+
+  details {
+    margin-top: 15px;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    padding: 11px 13px;
+    font-size: .8rem;
+  }
+  summary { cursor: pointer; font-weight: 700; font-size: .84rem; }
+  details p, details li { color: var(--ink-soft); }
+  details table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: .74rem; }
+  details th, details td { border: 1px solid var(--line); padding: 4px 6px; text-align: center; }
+  details th { background: rgba(128,128,128,.12); }
+  /* 12サイズ分の横長テーブルは、表の中だけ横スクロールさせる */
+  .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; margin-top: 8px; }
+  .scroll-x table { width: auto; min-width: 100%; margin-top: 0; white-space: nowrap; }
+  .scroll-x th, .scroll-x td { padding: 5px 9px; }
+  .scroll-x th:first-child, .scroll-x td:first-child {
+    position: sticky; left: 0; background: var(--card);
+  }
+  .scroll-hint { font-size: .68rem; color: var(--ink-soft); margin: 6px 0 0; }
+  code {
+    background: rgba(128,128,128,.14); padding: 1px 5px;
+    border-radius: 4px; font-size: .92em;
+  }
+
+  footer {
+    margin: 26px auto 0; max-width: 640px; padding: 14px;
+    border-top: 1px solid var(--line);
+    font-size: .74rem; color: var(--ink-soft); text-align: center;
+  }
+  footer a { color: var(--navy); }
+
+  @media print {
+    header { background: #fff !important; color: #000 !important; border-bottom: 2px solid #000; }
+    button.opt { border: 1px solid #000; }
+    .warn { border: 1px solid #000; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ボルト締付トルク早見表</h1>
+  <p class="sub">N・m と kgf・m を同時表示／登録なし・広告なし・オフライン可</p>
+</header>
+
+<main>
+
+  <section>
+    <p class="label">① ボルトサイズ</p>
+    <div class="grid grid-size" id="sizes"></div>
+  </section>
+
+  <section>
+    <p class="label">② 強度区分</p>
+    <div class="grid grid-4" id="grades"></div>
+  </section>
+
+  <section>
+    <p class="label">③ ねじ面の状態</p>
+    <div class="grid grid-2" id="lubs"></div>
+  </section>
+
+  <div class="result">
+    <div class="result-head">
+      <span id="cond">M10 / 8.8 / 潤滑なし</span>
+      <span style="font-weight:500;opacity:.85">締付トルクの目安</span>
+    </div>
+    <div class="result-body">
+      <div class="val-main"><span id="nm">52.0</span><span class="unit">N・m</span></div>
+      <div class="val-sub"><span id="kgf">5.30</span><span class="unit">kgf・m</span></div>
+      <div class="kgf-note">現場で「何キロで締める」と言うときの数字はこちら</div>
+    </div>
+    <div class="detail">
+      <div>有効断面積 <b id="as">58.0</b> mm²</div>
+      <div>降伏点 <b id="sy">640</b> MPa</div>
+      <div>締付軸力 <b id="ax">26.0</b> kN</div>
+      <div>トルク係数 K <b id="k">0.20</b></div>
+    </div>
+  </div>
+
+  <div class="warn">
+    <strong>これは目安です。指定値があるならそちらが優先</strong>
+    メーカーの整備要領書や設計図書にトルク指定がある場合は、必ずそちらに従ってください。
+    トルク係数はねじ面の状態で 0.15〜0.25 ほどばらつくため、実際の軸力は計算値とずれます。
+    重要保安部位、高温部、再使用ボルトには、この表をそのまま使わないでください。
+  </div>
+
+  <details>
+    <summary>強度区分の数字の読み方（8.8 って何？）</summary>
+    <p>
+      前の数字 × 100 = <b>引張強さ</b>（MPa）<br>
+      前 × 後 × 10 = <b>降伏点</b>（MPa）
+    </p>
+    <p>
+      例：<code>8.8</code> なら 8×100 = 800 MPa が引張強さ、
+      8×8×10 = 640 MPa が降伏点。<br>
+      ボルトの頭に刻印されています。刻印が無い場合は強度不明なので、
+      重要部位には使わないこと。
+    </p>
+  </details>
+
+  <details>
+    <summary>計算式と根拠</summary>
+    <p>
+      <code>T = K × d × F ÷ 1000</code>（T:N・m、d:呼び径mm、F:軸力N）<br>
+      <code>F = As × 降伏点 × 0.7</code>
+    </p>
+    <p>
+      締付率は <b>70%</b> を採用しています。降伏点いっぱいまで締めると
+      塑性変形するため、余裕を見た一般的な値です。
+    </p>
+    <p>
+      有効断面積はメートル並目ねじ（JIS B 1082）の値。<br>
+      kgf・m への換算は <code>÷ 9.80665</code>。
+    </p>
+  </details>
+
+  <details>
+    <summary>全サイズ一覧（印刷用）</summary>
+    <p style="font-size:.74rem">強度区分 <b id="tblCond">8.8 / 潤滑なし</b> での全サイズ。単位：上段 N・m／下段 kgf・m</p>
+    <div class="scroll-x"><table id="allTable"></table></div>
+    <p class="scroll-hint">← 横にスクロールできます（左端のサイズ列は固定）</p>
+  </details>
+
+</main>
+
+<footer>
+  作った人 → <a href="https://x.com/genba_dougubako" target="_blank" rel="noopener">@genba_dougubako</a><br>
+  点検表・KYシートの記入例つきテンプレも作ってます
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  var SIZES = [
+    { n: "M6",  d: 6,  as: 20.1 },
+    { n: "M8",  d: 8,  as: 36.6 },
+    { n: "M10", d: 10, as: 58.0 },
+    { n: "M12", d: 12, as: 84.3 },
+    { n: "M14", d: 14, as: 115  },
+    { n: "M16", d: 16, as: 157  },
+    { n: "M18", d: 18, as: 192  },
+    { n: "M20", d: 20, as: 245  },
+    { n: "M22", d: 22, as: 303  },
+    { n: "M24", d: 24, as: 353  },
+    { n: "M27", d: 27, as: 459  },
+    { n: "M30", d: 30, as: 561  }
+  ];
+  var GRADES = [
+    { n: "4.8",  sy: 320,  ts: 400  },
+    { n: "8.8",  sy: 640,  ts: 800  },
+    { n: "10.9", sy: 900,  ts: 1000 },
+    { n: "12.9", sy: 1080, ts: 1200 }
+  ];
+  var LUBS = [
+    { n: "潤滑なし", sub: "乾燥・黒皮", k: 0.20 },
+    { n: "潤滑あり", sub: "オイル・グリス", k: 0.15 }
+  ];
+
+  var RATIO = 0.7;      // 締付率
+  var G = 9.80665;      // kgf換算
+
+  var iSize = 2, iGrade = 1, iLub = 0;
+
+  function calcNm(size, grade, lub) {
+    var F = size.as * grade.sy * RATIO;   // N
+    return { nm: lub.k * size.d * F / 1000, f: F };
+  }
+  function fmt(v) {
+    if (v >= 100) return v.toFixed(0);
+    if (v >= 10)  return v.toFixed(1);
+    return v.toFixed(2);
+  }
+
+  function build(container, items, current, onPick) {
+    container.innerHTML = "";
+    items.forEach(function (it, idx) {
+      var b = document.createElement("button");
+      b.type = "button";
+      b.className = "opt" + (idx === current ? " on" : "");
+      b.innerHTML = it.sub
+        ? it.n + '<span class="tiny">' + it.sub + "</span>"
+        : it.n;
+      b.addEventListener("click", function () { onPick(idx); });
+      container.appendChild(b);
+    });
+  }
+
+  function renderAll() {
+    var size = SIZES[iSize], grade = GRADES[iGrade], lub = LUBS[iLub];
+    var r = calcNm(size, grade, lub);
+
+    document.getElementById("nm").textContent = fmt(r.nm);
+    document.getElementById("kgf").textContent = fmt(r.nm / G);
+    document.getElementById("cond").textContent =
+      size.n + " / " + grade.n + " / " + lub.n;
+    // 58.0 が "58" と表示されるのを防ぐ（3桁未満は小数第1位まで揃える）
+    document.getElementById("as").textContent =
+      size.as < 100 ? size.as.toFixed(1) : String(size.as);
+    document.getElementById("sy").textContent = grade.sy;
+    document.getElementById("ax").textContent = (r.f / 1000).toFixed(1);
+    document.getElementById("k").textContent = lub.k.toFixed(2);
+    // 印刷したとき、どの条件で出した表なのかが紙に残るようにする
+    document.getElementById("tblCond").textContent = grade.n + " / " + lub.n;
+
+    var html = "<tr><th>サイズ</th>";
+    SIZES.forEach(function (s) { html += "<th>" + s.n + "</th>"; });
+    html += "</tr><tr><td><b>N・m</b></td>";
+    SIZES.forEach(function (s) {
+      html += "<td>" + fmt(calcNm(s, grade, lub).nm) + "</td>";
+    });
+    html += "</tr><tr><td><b>kgf・m</b></td>";
+    SIZES.forEach(function (s) {
+      html += "<td>" + fmt(calcNm(s, grade, lub).nm / G) + "</td>";
+    });
+    html += "</tr>";
+    document.getElementById("allTable").innerHTML = html;
+
+    build(document.getElementById("sizes"),  SIZES,  iSize,  function (i) { iSize = i;  renderAll(); });
+    build(document.getElementById("grades"), GRADES, iGrade, function (i) { iGrade = i; renderAll(); });
+    build(document.getElementById("lubs"),   LUBS,   iLub,   function (i) { iLub = i;   renderAll(); });
+  }
+
+  renderAll();
+})();
+</script>
+
+</body>
+</html>
