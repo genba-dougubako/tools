@@ -6,6 +6,7 @@ local CarService = require(script.Parent.CarService)
 local DamageService = require(script.Parent.DamageService)
 local DataService = require(script.Parent.DataService)
 local MapBuilder = require(script.Parent.MapBuilder)
+local PressService = require(script.Parent.PressService)
 
 local notify = Remotes.get("Notify")
 
@@ -21,3 +22,4 @@ end)
 DataService.init()
 CarService.init(DataService)
 MapBuilder.build()
+PressService.init(CarService)

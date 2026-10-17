@@ -63,6 +63,13 @@ local cashLabel = text({
 	TextColor3 = Color3.fromRGB(120, 255, 120),
 }, gui)
 
+-- Coins (プレス機の報酬)
+local coinsLabel = text({
+	Position = UDim2.new(0.5, -110, 0, 48),
+	Size = UDim2.fromOffset(220, 30),
+	TextColor3 = Color3.fromRGB(255, 220, 60),
+}, gui)
+
 -- Speed / health
 local stats = new("Frame", {
 	AnchorPoint = Vector2.new(0.5, 1),
@@ -215,3 +222,10 @@ RunService.RenderStepped:Connect(function()
 	healthFill.Size = UDim2.fromScale(ratio, 1)
 	healthFill.BackgroundColor3 = Color3.fromRGB(220 * (1 - ratio) + 40, 220 * ratio + 20, 40)
 end)
+
+local coins = player:WaitForChild("leaderstats"):WaitForChild("Coins")
+local function updateCoins()
+	coinsLabel.Text = `COINS {coins.Value}`
+end
+coins.Changed:Connect(updateCoins)
+updateCoins()

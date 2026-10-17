@@ -137,7 +137,7 @@ function DamageService.attach(rig)
 			conn:Disconnect()
 			return
 		end
-		if health <= 0 then
+		if health <= 0 or model:GetAttribute("Crushing") then
 			return
 		end
 

@@ -19,6 +19,9 @@ return {
 	SteerSign = 1,
 	MaxSteerAngle = 30,
 
+	-- プレス機
+	PressReward = 100,
+
 	AutoSaveInterval = 60,
 	DataStoreName = "CarCrashV1",
 }

@@ -18,6 +18,13 @@
 - 他プレイヤーやダミー車を壊すと `SMASH` ボーナス、撃破で `WRECKED!` ボーナス
 - 貯めたお金で GARAGE から新しい車を購入
 
+## プレス機(車を潰して +100 コイン)
+
+- スポーン地点の東に大型プレス機があり、操作盤の赤ボタン(`Start Press`)で作動
+- 自分の車をプレス内に停めて押す → 警告灯 → 打ち下ろし → 火花/煙/カメラ揺れ → `+100 COINS` → 車を入口の外に再出現
+- 判定はすべてサーバー側(車の所有者、プレス内に収まっているか、距離、占有中か、二重報酬防止)
+- 検証手順は `STUDIO_TEST_CHECKLIST.md` を参照
+
 ## 構成
 
 | ファイル | 役割 |
@@ -28,6 +35,8 @@
 | `src/server/DamageService.luau` | 衝突検知、パーツの変形/脱落、体力、報酬、爆発 |
 | `src/server/CarService.luau` | スポーン/購入/リセット、VehicleSeat 入力の反映 |
 | `src/server/DataService.luau` | DataStore によるお金・所持車のセーブ |
+| `src/server/PressService.luau` | プレス機の生成、作動の検証、潰れ演出、コイン付与、車の再出現 |
+| `src/client/Effects.client.luau` | プレス時のカメラ揺れ |
 | `src/server/MapBuilder.luau` | テストマップ(道路、ジャンプ台、レンガ壁、巨大壁、ダミー車) |
 | `src/client/HUD.client.luau` | 所持金、速度/体力、ガレージ UI、獲得トースト |
 

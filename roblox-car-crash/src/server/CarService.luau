@@ -14,6 +14,8 @@ local cars = {} -- [Player] = Rig
 local lastCarId = {} -- [Player] = string
 local lastSpawn = {} -- [Player] = os.clock()
 
+local dataService
+
 local carsFolder = Instance.new("Folder")
 carsFolder.Name = "Cars"
 carsFolder.Parent = workspace
@@ -26,13 +28,14 @@ local function removeCar(player: Player)
 	end
 end
 
-local function spawnCar(player: Player, carId: string, dataService)
+-- at: 指定すると、その位置・向きに車を出してキャラクターもそこへ移動する(プレス後の再出現用)
+local function spawnCar(player: Player, carId: string, at: CFrame?)
 	local def = Catalog.ById[carId]
 	if not def or not dataService.owns(player, carId) then
 		return
 	end
 	local now = os.clock()
-	if lastSpawn[player] and now - lastSpawn[player] < 1 then
+	if not at and lastSpawn[player] and now - lastSpawn[player] < 1 then
 		return
 	end
 	lastSpawn[player] = now
@@ -46,12 +49,17 @@ local function spawnCar(player: Player, carId: string, dataService)
 
 	removeCar(player)
 
+	if at then
+		character:PivotTo(at + Vector3.new(0, 5, 0))
+		root = character:FindFirstChild("HumanoidRootPart") or root
+	end
+
 	-- 足元の地面に合わせて置く(落下ダメージを避ける)
 	local params = RaycastParams.new()
 	params.FilterDescendantsInstances = { character, carsFolder }
 	local hit = workspace:Raycast(root.Position + Vector3.new(0, 5, 0), Vector3.new(0, -100, 0), params)
 	local groundY = hit and hit.Position.Y or root.Position.Y - 3
-	local _, yaw = root.CFrame:ToEulerAnglesYXZ()
+	local _, yaw = (at or root.CFrame):ToEulerAnglesYXZ()
 	local height = groundY + def.WheelRadius + def.Size.Y / 2 + 0.5
 	local cf = CFrame.new(root.Position.X, height, root.Position.Z) * CFrame.Angles(0, yaw, 0)
 
@@ -67,7 +75,21 @@ local function spawnCar(player: Player, carId: string, dataService)
 	rig.Seat:Sit(humanoid)
 end
 
-function CarService.init(dataService)
+function CarService.getCar(player: Player)
+	return cars[player]
+end
+
+-- 管理対象から外す(車自体は壊さない)。プレス中の車を他の処理から切り離すのに使う
+function CarService.forget(player: Player)
+	cars[player] = nil
+end
+
+function CarService.respawn(player: Player, at: CFrame)
+	spawnCar(player, lastCarId[player] or "sedan", at)
+end
+
+function CarService.init(service)
+	dataService = service
 	local spawnRemote = Remotes.get("SpawnCar")
 	local buyRemote = Remotes.get("BuyCar")
 	local resetRemote = Remotes.get("ResetCar")
@@ -75,12 +97,12 @@ function CarService.init(dataService)
 
 	spawnRemote.OnServerEvent:Connect(function(player, carId)
 		if typeof(carId) == "string" then
-			spawnCar(player, carId, dataService)
+			spawnCar(player, carId)
 		end
 	end)
 
 	resetRemote.OnServerEvent:Connect(function(player)
-		spawnCar(player, lastCarId[player] or "sedan", dataService)
+		spawnCar(player, lastCarId[player] or "sedan")
 	end)
 
 	buyRemote.OnServerEvent:Connect(function(player, carId)
@@ -91,7 +113,7 @@ function CarService.init(dataService)
 		if dataService.spend(player, def.Price) then
 			dataService.grant(player, carId)
 			notifyRemote:FireClient(player, `Bought {def.Name}!`)
-			spawnCar(player, carId, dataService)
+			spawnCar(player, carId)
 		else
 			notifyRemote:FireClient(player, "Not enough cash")
 		end
