@@ -6,6 +6,9 @@ local Shared = game:GetService("ReplicatedStorage").Shared
 local Config = require(Shared.Config)
 local Remotes = require(Shared.Remotes)
 
+local CoinService = require(script.Parent.CoinService)
+local EventService = require(script.Parent.EventService)
+
 local PressService = {}
 
 -- ローカル座標: -Z が奥(車の進行方向)、+Z が入口、Y が上。
@@ -270,14 +273,6 @@ local function tweenValue(value: NumberValue, target: number, seconds: number, s
 	tween.Completed:Wait()
 end
 
-local function addCoins(player: Player, amount: number)
-	local stats = player:FindFirstChild("leaderstats")
-	local coins = stats and stats:FindFirstChild("Coins")
-	if coins then
-		coins.Value += amount
-	end
-end
-
 local function runPress(carService, player: Player, model: Model, rig)
 	local squash, carTop = lockCar(player, model, rig)
 
@@ -305,7 +300,11 @@ local function runPress(carService, player: Player, model: Model, rig)
 
 	-- 成功判定: 最後まで潰れた状態で車が残っていて、プレイヤーも在席
 	if model.Parent and player.Parent then
-		addCoins(player, Config.PressReward)
+		CoinService.add(player, Config.PressReward)
+		EventService.add(player, "press_total", 1)
+		if rig.Def.Origin then
+			EventService.add(player, `press_{rig.Def.Origin}`, 1)
+		end
 		notify:FireClient(player, `CRUSHED! +{Config.PressReward} COINS`)
 	end
 
@@ -336,10 +335,14 @@ local function onTriggered(carService, player: Player)
 		return
 	end
 
-	local rig = carService.getCar(player)
+	local rig = carService.getVehicle(player)
 	local model = rig and rig.Chassis.Parent
 	if not model or model:GetAttribute("Crushing") then
 		notify:FireClient(player, "Spawn a car first")
+		return
+	end
+	if rig.Def.Kind ~= "car" then
+		notify:FireClient(player, "Only cars fit in the press")
 		return
 	end
 	if not carInBay(rig.Chassis) then
@@ -374,24 +377,8 @@ local function onTriggered(carService, player: Player)
 	busy = false
 end
 
-local function setupCoins(player: Player)
-	local stats = player:WaitForChild("leaderstats", 30)
-	if stats and not stats:FindFirstChild("Coins") then
-		local coins = Instance.new("IntValue")
-		coins.Name = "Coins"
-		coins.Parent = stats
-	end
-end
-
 function PressService.init(carService)
 	folder.Parent = workspace
-
-	Players.PlayerAdded:Connect(function(player)
-		task.spawn(setupCoins, player)
-	end)
-	for _, player in Players:GetPlayers() do
-		task.spawn(setupCoins, player)
-	end
 
 	prompt.Triggered:Connect(function(player)
 		onTriggered(carService, player)

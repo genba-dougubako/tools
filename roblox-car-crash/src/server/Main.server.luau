@@ -2,11 +2,14 @@ local Players = game:GetService("Players")
 
 local Remotes = require(game:GetService("ReplicatedStorage").Shared.Remotes)
 
-local CarService = require(script.Parent.CarService)
+local CoinService = require(script.Parent.CoinService)
 local DamageService = require(script.Parent.DamageService)
 local DataService = require(script.Parent.DataService)
+local EventService = require(script.Parent.EventService)
 local MapBuilder = require(script.Parent.MapBuilder)
 local PressService = require(script.Parent.PressService)
+local RingService = require(script.Parent.RingService)
+local VehicleService = require(script.Parent.VehicleService)
 
 local notify = Remotes.get("Notify")
 
@@ -19,7 +22,11 @@ DamageService.setRewardHandler(function(userId, amount, label)
 	end
 end)
 
+-- 機能を足すときは、ここに init を1行足す(各機能は EventService に統計を送ればイベントに参加できる)
 DataService.init()
-CarService.init(DataService)
+CoinService.init()
+EventService.init()
+VehicleService.init(DataService)
 MapBuilder.build()
-PressService.init(CarService)
+PressService.init(VehicleService)
+RingService.init(VehicleService)

@@ -1,6 +1,6 @@
 return {
 	StartCash = 500,
-	StartCars = { "sedan" },
+	StartCars = { "sedan", "trainer" },
 
 	-- 衝撃判定: ImpactWindow 秒間の速度変化がこの値(studs/s)を超えたらクラッシュ
 	ImpactThreshold = 30,
@@ -18,6 +18,14 @@ return {
 	DriveSign = 1,
 	SteerSign = 1,
 	MaxSteerAngle = 30,
+
+	-- 空のリング
+	RingReward = 10,
+	RingComboBonus = 3, -- コンボ1段ごとの加算(最大 RingComboMax 段)
+	RingComboMax = 5,
+	RingComboWindow = 6, -- この秒数以内に次を通るとコンボ継続
+	RingTimeout = 15, -- この秒数以内に次を通れないとコースをやり直し
+	CourseBonus = 100,
 
 	-- プレス機
 	PressReward = 100,

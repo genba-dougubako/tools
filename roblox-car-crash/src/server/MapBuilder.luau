@@ -1,5 +1,5 @@
 local Shared = game:GetService("ReplicatedStorage").Shared
-local Catalog = require(Shared.CarCatalog)
+local Catalog = require(Shared.VehicleCatalog)
 
 local CarBuilder = require(script.Parent.CarBuilder)
 local DamageService = require(script.Parent.DamageService)

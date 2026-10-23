@@ -2,13 +2,15 @@ local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
-local Catalog = require(Shared.CarCatalog)
+local Catalog = require(Shared.VehicleCatalog)
+local EventCatalog = require(Shared.EventCatalog)
 local Remotes = require(Shared.Remotes)
 
-local CarBuilder = require(script.Parent.CarBuilder)
 local DamageService = require(script.Parent.DamageService)
+local EventService = require(script.Parent.EventService)
+local VehicleFactory = require(script.Parent.VehicleFactory)
 
-local CarService = {}
+local VehicleService = {}
 
 local cars = {} -- [Player] = Rig
 local lastCarId = {} -- [Player] = string
@@ -60,10 +62,10 @@ local function spawnCar(player: Player, carId: string, at: CFrame?)
 	local hit = workspace:Raycast(root.Position + Vector3.new(0, 5, 0), Vector3.new(0, -100, 0), params)
 	local groundY = hit and hit.Position.Y or root.Position.Y - 3
 	local _, yaw = (at or root.CFrame):ToEulerAnglesYXZ()
-	local height = groundY + def.WheelRadius + def.Size.Y / 2 + 0.5
+	local height = groundY + VehicleFactory.rideHeight(def) + 0.5
 	local cf = CFrame.new(root.Position.X, height, root.Position.Z) * CFrame.Angles(0, yaw, 0)
 
-	local model, rig = CarBuilder.build(def, cf, player.UserId, player.Name)
+	local model, rig = VehicleFactory.build(def, cf, player.UserId, player.Name)
 	model.Parent = carsFolder
 	pcall(function()
 		rig.Chassis:SetNetworkOwner(player)
@@ -75,20 +77,20 @@ local function spawnCar(player: Player, carId: string, at: CFrame?)
 	rig.Seat:Sit(humanoid)
 end
 
-function CarService.getCar(player: Player)
+function VehicleService.getVehicle(player: Player)
 	return cars[player]
 end
 
 -- 管理対象から外す(車自体は壊さない)。プレス中の車を他の処理から切り離すのに使う
-function CarService.forget(player: Player)
+function VehicleService.forget(player: Player)
 	cars[player] = nil
 end
 
-function CarService.respawn(player: Player, at: CFrame)
+function VehicleService.respawn(player: Player, at: CFrame)
 	spawnCar(player, lastCarId[player] or "sedan", at)
 end
 
-function CarService.init(service)
+function VehicleService.init(service)
 	dataService = service
 	local spawnRemote = Remotes.get("SpawnCar")
 	local buyRemote = Remotes.get("BuyCar")
@@ -110,6 +112,11 @@ function CarService.init(service)
 		if not def or dataService.owns(player, carId) then
 			return
 		end
+		if def.RequiresEvent and not EventService.isDone(player, def.RequiresEvent) then
+			local event = EventCatalog.ById[def.RequiresEvent]
+			notifyRemote:FireClient(player, `Locked: clear "{event and event.Name or def.RequiresEvent}" first`)
+			return
+		end
 		if dataService.spend(player, def.Price) then
 			dataService.grant(player, carId)
 			notifyRemote:FireClient(player, `Bought {def.Name}!`)
@@ -125,17 +132,25 @@ function CarService.init(service)
 		lastSpawn[player] = nil
 	end)
 
-	RunService.Heartbeat:Connect(function()
+	-- 飛行機・ヘリの上下入力(クライアントから)。範囲を丸めて保存するだけ
+	Remotes.get("FlightAxis").OnServerEvent:Connect(function(player, axis)
+		local rig = cars[player]
+		if rig and typeof(axis) == "number" and axis == axis then
+			rig.Lift = math.clamp(axis, -1, 1)
+		end
+	end)
+
+	RunService.Heartbeat:Connect(function(dt)
 		for _, rig in cars do
-			local seat = rig.Seat
-			if seat.Occupant then
-				local wrecked = rig.Chassis.Parent:GetAttribute("Wrecked")
-				CarBuilder.drive(rig, wrecked and 0 or seat.ThrottleFloat, wrecked and 0 or seat.SteerFloat)
-			elseif rig.Driven then
-				CarBuilder.coast(rig)
+			if rig.Seat.Occupant then
+				rig.Active = true
+				rig.Update(rig, dt)
+			elseif rig.Active then
+				rig.Active = false
+				rig.Idle(rig)
 			end
 		end
 	end)
 end
 
-return CarService
+return VehicleService

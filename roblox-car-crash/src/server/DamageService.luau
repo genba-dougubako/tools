@@ -76,6 +76,7 @@ function DamageService.attach(rig)
 	local model = chassis.Parent
 	local def = rig.Def
 	local ownerId: number? = model:GetAttribute("OwnerUserId")
+	local threshold = def.ImpactThreshold or Config.ImpactThreshold
 
 	local health = def.Health
 	model:SetAttribute("Health", health)
@@ -105,7 +106,7 @@ function DamageService.attach(rig)
 	local cooldownUntil = os.clock() + Config.SpawnGrace
 
 	local function impact(dv: Vector3)
-		local damage = math.min((dv.Magnitude - Config.ImpactThreshold) * def.DamageScale, health)
+		local damage = math.min((dv.Magnitude - threshold) * def.DamageScale, health)
 		if damage <= 0 then
 			return
 		end
@@ -152,7 +153,7 @@ function DamageService.attach(rig)
 		end
 
 		local dv = history[1][2] - v
-		if dv.Magnitude > Config.ImpactThreshold then
+		if dv.Magnitude > threshold then
 			impact(dv)
 			table.clear(history)
 			cooldownUntil = now + Config.ImpactCooldown

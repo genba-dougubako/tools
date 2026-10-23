@@ -140,7 +140,10 @@ function CarBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName: stri
 		end
 	end
 
+	model:SetAttribute("Kind", "car")
+
 	local rig: Rig = {
+		Kind = "car",
 		Def = def,
 		Chassis = chassis,
 		Seat = seat,
@@ -148,7 +151,19 @@ function CarBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName: stri
 		Steers = steers,
 		Deformables = deformables,
 	}
+	rig.Update = CarBuilder.update
+	rig.Idle = CarBuilder.coast
 	return model, rig
+end
+
+function CarBuilder.rideHeight(def): number
+	return def.WheelRadius + def.Size.Y / 2
+end
+
+-- 共通インターフェース: 運転手がいる間、毎フレーム呼ばれる
+function CarBuilder.update(rig: Rig, _dt: number)
+	local wrecked = rig.Chassis.Parent:GetAttribute("Wrecked")
+	CarBuilder.drive(rig, wrecked and 0 or rig.Seat.ThrottleFloat, wrecked and 0 or rig.Seat.SteerFloat)
 end
 
 -- VehicleSeat の入力から駆動輪・操舵輪を動かす(サーバーから毎フレーム呼ぶ)

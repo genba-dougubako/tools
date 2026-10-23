@@ -3,7 +3,7 @@ local Players = game:GetService("Players")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
 local Config = require(Shared.Config)
-local Catalog = require(Shared.CarCatalog)
+local Catalog = require(Shared.VehicleCatalog)
 
 local DataService = {}
 

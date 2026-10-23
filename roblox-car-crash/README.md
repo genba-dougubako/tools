@@ -1,4 +1,4 @@
-# Car Crash (Roblox) — Car Crushers 2 系プロトタイプ
+# Car Crash (Roblox) — Car Crushers 2 系プロトタイプ + 空のリング
 
 車を運転して、壁・ジャンプ台・ダミー車に突っ込んで壊し、その分だけお金がもらえる → 新しい車を買う、というゲームの土台です。
 車は全部コード(Part + 拘束)で組み立てているので、外部アセットは不要です。
@@ -25,20 +25,56 @@
 - 判定はすべてサーバー側(車の所有者、プレス内に収まっているか、距離、占有中か、二重報酬防止)
 - 検証手順は `STUDIO_TEST_CHECKLIST.md` を参照
 
+## 全体の設計(「データを足せば増える」)
+
+```
+VehicleCatalog (shared)  乗り物のデータ。Kind = car / plane / heli
+EventCatalog   (shared)  イベントのデータ。クリア条件 = 統計(Stat)の目標値
+RingCourse     (shared)  空のリングコースの座標
+
+VehicleFactory ──► CarBuilder / AircraftBuilder    Kind ごとの生成と操縦(rig.Update / rig.Idle)
+VehicleService     スポーン、購入(イベント未クリアは拒否)、毎フレームの操縦
+DamageService      衝突検知・体力・報酬(乗り物の種類を問わない)
+PressService       プレス機 → EventService へ press_* を送る
+RingService        リング通過判定 → コイン、EventService へ ring_pass / course_clear
+EventService       統計の集計とイベントのクリア判定。クリアで「購入権」が解放される
+CoinService        コイン残高
+```
+
+### 増やし方
+- **乗り物を足す:** `VehicleCatalog.luau` に1項目足すだけ(`RequiresEvent` を付けるとイベント報酬になる)。新しい種類(船など)は Builder を作って `VehicleFactory` に登録。
+- **イベントを足す:** `EventCatalog.luau` に1項目足す。条件は `Stat` と `Target`。
+- **新しい遊びを足す:** 機能側で `EventService.add(player, "好きな統計名", 1)` を呼べば、その統計をイベントの条件に使える。`Main.server.luau` に `init` を1行足す。
+- **「購入権」の設計:** イベントクリアは「買えるようになる」だけで、車は貰えない。お金(現金 `$`)で買う。Robux 課金は未実装(承認が必要なため)。
+- 予告用の `Status = "planned"` イベントは UI に「COMING SOON」と出る(国産 vs 海外の対決戦が入っている)。
+
 ## 構成
 
 | ファイル | 役割 |
 | --- | --- |
-| `src/shared/Config.luau` | 報酬・衝撃しきい値・操作感の調整値 |
-| `src/shared/CarCatalog.luau` | 車種の定義(ここに足せば車が増える) |
-| `src/server/CarBuilder.luau` | 車体・タイヤ・ステア・駆動の生成と操作 |
+| `src/shared/Config.luau` | 報酬・衝撃しきい値・リング・プレスの調整値 |
+| `src/shared/VehicleCatalog.luau` | 車・飛行機・ヘリの定義 |
+| `src/shared/EventCatalog.luau` | イベントの定義 |
+| `src/shared/RingCourse.luau` | リングの座標 |
+| `src/server/VehicleFactory.luau` | 種類ごとのビルダーへの窓口 |
+| `src/server/CarBuilder.luau` | 車体・タイヤ・ステア・駆動 |
+| `src/server/AircraftBuilder.luau` | 飛行機・ヘリ(アーケード式の飛行) |
+| `src/server/VehicleService.luau` | スポーン/購入/リセット、毎フレームの操縦 |
 | `src/server/DamageService.luau` | 衝突検知、パーツの変形/脱落、体力、報酬、爆発 |
-| `src/server/CarService.luau` | スポーン/購入/リセット、VehicleSeat 入力の反映 |
+| `src/server/PressService.luau` | プレス機の生成、作動の検証、潰れ演出、コイン付与、再出現 |
+| `src/server/RingService.luau` | 空のリング(通過判定、コンボ、完走ボーナス) |
+| `src/server/EventService.luau` | 統計とイベントのクリア判定 |
+| `src/server/CoinService.luau` | コイン残高 |
 | `src/server/DataService.luau` | DataStore によるお金・所持車のセーブ |
-| `src/server/PressService.luau` | プレス機の生成、作動の検証、潰れ演出、コイン付与、車の再出現 |
-| `src/client/Effects.client.luau` | プレス時のカメラ揺れ |
 | `src/server/MapBuilder.luau` | テストマップ(道路、ジャンプ台、レンガ壁、巨大壁、ダミー車) |
-| `src/client/HUD.client.luau` | 所持金、速度/体力、ガレージ UI、獲得トースト |
+| `src/client/HUD.client.luau` | 所持金/コイン、速度・高度・体力、ガレージ、イベント一覧、通知 |
+| `src/client/Flight.client.luau` | 飛行機・ヘリの上下入力(E/Shift 上、Q/Ctrl 下) |
+| `src/client/Effects.client.luau` | プレス時のカメラ揺れ |
+
+## 飛行機・ヘリの操作
+- 飛行機: `W/S` 機首下げ/上げ、`A/D` 旋回、`E/Shift` 加速、`Q/Ctrl` 減速。離陸速度まで加速すると機首が上がる。
+- ヘリ: `W/S` 前進/後退、`A/D` 旋回、`E/Shift` 上昇、`Q/Ctrl` 下降(押さなければホバリング)。
+- リング: 番号順に通る。連続で通るとコンボ加算、15 秒以内に次を通れないとやり直し、全部通ると完走ボーナス +100。
 
 ## 衝突ダメージの仕組み
 
