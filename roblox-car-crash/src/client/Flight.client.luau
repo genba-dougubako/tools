@@ -7,6 +7,7 @@ local Remotes = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("R
 
 local player = Players.LocalPlayer
 local axisRemote = Remotes.get("FlightAxis")
+local winchRemote = Remotes.get("Winch")
 
 -- W/S/A/D は VehicleSeat が拾う。ここでは上下(加速/上昇)の入力だけを送る。
 -- Space はシートから降りてしまうので使わない。
@@ -31,5 +32,18 @@ RunService.Heartbeat:Connect(function()
 		lastAxis = axis
 		lastSent = now
 		axisRemote:FireServer(axis)
+	end
+end)
+
+-- F: ウインチ(吊れる機体かどうかはサーバーが判定)
+UserInputService.InputBegan:Connect(function(input, processed)
+	if processed or input.KeyCode ~= Enum.KeyCode.F then
+		return
+	end
+	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
+	local seat = humanoid and humanoid.SeatPart
+	local model = seat and seat:IsA("VehicleSeat") and seat.Parent
+	if model and model:GetAttribute("Kind") == "heli" then
+		winchRemote:FireServer()
 	end
 end)

@@ -27,6 +27,11 @@ return {
 	RingTimeout = 15, -- この秒数以内に次を通れないとコースをやり直し
 	CourseBonus = 100,
 
+	-- 国産 vs 海外 対決戦(秒)
+	ShowdownFirstDelay = 60,
+	ShowdownInterval = 600,
+	ShowdownDuration = 180,
+
 	-- プレス機
 	PressReward = 100,
 

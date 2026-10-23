@@ -12,7 +12,7 @@ local Events = {
 			{ Stat = "press_jp", Target = 2, Label = "Domestic-style" },
 			{ Stat = "press_os", Target = 2, Label = "Import-style" },
 		},
-		Unlocks = { Vehicles = { "truck" }, Facilities = { "press_lv2" } },
+		Unlocks = { Vehicles = { "truck", "sky_crane" }, Facilities = { "press_lv2" } },
 		Status = "active",
 	},
 	{
@@ -26,12 +26,24 @@ local Events = {
 		Status = "active",
 	},
 	{
+		Id = "heavy_lift",
+		Name = "Heavy Lift",
+		Description = "Hook 3 cars with the Sky Crane winch (F).",
+		Requirements = {
+			{ Stat = "cars_lifted", Target = 3, Label = "Cars lifted" },
+		},
+		Unlocks = { Vehicles = { "gunship", "tilt_rotor" } },
+		Status = "active",
+	},
+	{
 		Id = "jp_vs_os",
 		Name = "Domestic vs Import Showdown",
-		Description = "Server-wide team battle. Coming soon.",
-		Requirements = {},
-		Unlocks = {},
-		Status = "planned",
+		Description = "Every 10 min: crush cars in the press for 3 min. Help the winning side.",
+		Requirements = {
+			{ Stat = "showdown_win", Target = 1, Label = "Showdown wins" },
+		},
+		Unlocks = { Vehicles = { "midship_blade", "wedge_supercar", "scarlet_v8", "strike_fighter" } },
+		Status = "active",
 	},
 }
 

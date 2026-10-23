@@ -1,6 +1,18 @@
 local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
 
+local CollectionService = game:GetService("CollectionService")
+
 local CarBuilder = {}
+
+-- 比率は車体の長さ L に対する割合。CabinZ は運転席の中心位置(+ が後ろ)
+local BODY_STYLES = {
+	sedan = { Cabin = 0.38, CabinZ = 0.06, Hood = 0.3, Trunk = 0.22 },
+	hatch = { Cabin = 0.5, CabinZ = 0.17, Hood = 0.3, Trunk = 0 },
+	box = { Cabin = 0.74, CabinZ = 0.1, Hood = 0.16, Trunk = 0 },
+	suv = { Cabin = 0.56, CabinZ = 0.13, Hood = 0.3, Trunk = 0 },
+	pickup = { Cabin = 0.28, CabinZ = -0.12, Hood = 0.28, Trunk = 0, Bed = true },
+	sports = { Cabin = 0.3, CabinZ = 0.05, Hood = 0.36, Trunk = 0.2, Spoiler = true },
+}
 
 export type Rig = {
 	Def: any,
@@ -59,12 +71,33 @@ function CarBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName: stri
 		return part
 	end
 
+	-- 車体の形(Body)ごとの比率: 運転席(キャビン)の長さ・位置、ボンネット、トランク
+	local style = BODY_STYLES[def.Body or "sedan"] or BODY_STYLES.sedan
 	local top = H / 2
 	local ch = def.CabinHeight
-	addBody("Hood", Vector3.new(W, 0.6, L * 0.3), Vector3.new(0, top + 0.3, -L * 0.34), def.Color)
-	addBody("Trunk", Vector3.new(W, 0.6, L * 0.22), Vector3.new(0, top + 0.3, L * 0.39), def.Color)
-	addBody("Glass", Vector3.new(W * 0.9, ch, L * 0.38), Vector3.new(0, top + ch / 2, L * 0.06), Color3.fromRGB(120, 170, 200), Enum.Material.Glass, 0.4)
-	addBody("Roof", Vector3.new(W * 0.9, 0.3, L * 0.38), Vector3.new(0, top + ch + 0.15, L * 0.06), def.Color)
+	local cabinLen, cabinZ = L * style.Cabin, L * style.CabinZ
+	local hoodLen = L * style.Hood
+	addBody("Hood", Vector3.new(W, 0.6, hoodLen), Vector3.new(0, top + 0.3, -L / 2 + hoodLen / 2 + L * 0.01), def.Color)
+	if style.Trunk > 0 then
+		local trunkLen = L * style.Trunk
+		addBody("Trunk", Vector3.new(W, 0.6, trunkLen), Vector3.new(0, top + 0.3, L / 2 - trunkLen / 2 - L * 0.01), def.Color)
+	end
+	addBody("Glass", Vector3.new(W * 0.9, ch, cabinLen), Vector3.new(0, top + ch / 2, cabinZ), Color3.fromRGB(120, 170, 200), Enum.Material.Glass, 0.4)
+	addBody("Roof", Vector3.new(W * 0.9, 0.3, cabinLen), Vector3.new(0, top + ch + 0.15, cabinZ), def.Color)
+	if style.Bed then
+		local bedLen = L * 0.42
+		local bedZ = L / 2 - bedLen / 2 - L * 0.02
+		for _, sx in { -1, 1 } do
+			addBody("BedSide", Vector3.new(0.3, 1, bedLen), Vector3.new(sx * (W / 2 - 0.15), top + 0.5, bedZ), def.Color)
+		end
+		addBody("Tailgate", Vector3.new(W, 1, 0.3), Vector3.new(0, top + 0.5, L / 2 - L * 0.02), def.Color)
+	end
+	if style.Spoiler then
+		addBody("Spoiler", Vector3.new(W * 0.9, 0.2, 1), Vector3.new(0, top + 1.3, L / 2 - 0.6), Color3.fromRGB(30, 30, 30))
+		for _, sx in { -1, 1 } do
+			addBody("SpoilerPost", Vector3.new(0.2, 1, 0.4), Vector3.new(sx * W * 0.3, top + 0.7, L / 2 - 0.6), Color3.fromRGB(30, 30, 30))
+		end
+	end
 	addBody("FrontBumper", Vector3.new(W + 0.4, 0.8, 0.6), Vector3.new(0, -H / 2 + 0.7, -L / 2 - 0.3), Color3.fromRGB(60, 60, 60))
 	addBody("RearBumper", Vector3.new(W + 0.4, 0.8, 0.6), Vector3.new(0, -H / 2 + 0.7, L / 2 + 0.3), Color3.fromRGB(60, 60, 60))
 	for _, sx in { -1, 1 } do
@@ -77,7 +110,7 @@ function CarBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName: stri
 	seat.Size = Vector3.new(2, 0.8, 2)
 	seat.Transparency = 1
 	seat.Massless = true
-	seat.CFrame = cf * CFrame.new(-W * 0.2, top + 0.4, L * 0.04)
+	seat.CFrame = cf * CFrame.new(-W * 0.2, top + 0.4, cabinZ)
 	local seatWeld = Instance.new("WeldConstraint")
 	seatWeld.Part0 = chassis
 	seatWeld.Part1 = seat
@@ -141,6 +174,7 @@ function CarBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName: stri
 	end
 
 	model:SetAttribute("Kind", "car")
+	CollectionService:AddTag(model, "Liftable") -- Sky Crane で吊れる
 
 	local rig: Rig = {
 		Kind = "car",

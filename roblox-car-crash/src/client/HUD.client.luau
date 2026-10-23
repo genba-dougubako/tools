@@ -17,6 +17,25 @@ local resetRemote = Remotes.get("ResetCar")
 local notifyRemote = Remotes.get("Notify")
 
 local KIND_LABEL = { car = "CAR", plane = "PLANE", heli = "HELI" }
+local ORIGIN_LABEL = { jp = "JP", os = "IMPORT" }
+
+-- ガレージの絞り込み
+local FILTERS = {
+	{ Id = "all", Label = "ALL" },
+	{ Id = "jp", Label = "JP" },
+	{ Id = "os", Label = "IMPORT" },
+	{ Id = "air", Label = "AIR" },
+}
+local garageFilter = "all"
+
+local function matchesFilter(def): boolean
+	if garageFilter == "air" then
+		return def.Kind ~= "car"
+	elseif garageFilter == "jp" or garageFilter == "os" then
+		return def.Kind == "car" and def.Origin == garageFilter
+	end
+	return true
+end
 
 local function new(class: string, props: { [string]: any }, parent: Instance?)
 	local inst = Instance.new(class)
@@ -105,6 +124,12 @@ local coinsLabel = text({
 	Size = UDim2.fromOffset(220, 30),
 	TextColor3 = Color3.fromRGB(255, 220, 60),
 }, gui)
+local showdownLabel = text({
+	Position = UDim2.new(0.5, -200, 0, 108),
+	Size = UDim2.fromOffset(400, 26),
+	TextColor3 = Color3.fromRGB(255, 120, 80),
+}, gui)
+
 local ringLabel = text({
 	Position = UDim2.new(0.5, -110, 0, 80),
 	Size = UDim2.fromOffset(220, 26),
@@ -165,11 +190,33 @@ local function ownedSet()
 	return owned
 end
 
-local function refreshGarage()
+local refreshGarage
+
+local function filterTabs()
+	local frame = new("Frame", { LayoutOrder = 0, Size = UDim2.new(1, 0, 0, 32), BackgroundTransparency = 1 }, garagePanel)
+	new("UIListLayout", { FillDirection = Enum.FillDirection.Horizontal, Padding = UDim.new(0, 4) }, frame)
+	for _, filter in FILTERS do
+		local tab = button({
+			Size = UDim2.new(0.25, -3, 1, 0),
+			Text = filter.Label,
+			BackgroundColor3 = garageFilter == filter.Id and Color3.fromRGB(40, 120, 200) or Color3.fromRGB(40, 40, 48),
+		}, frame)
+		tab.Activated:Connect(function()
+			garageFilter = filter.Id
+			refreshGarage()
+		end)
+	end
+end
+
+function refreshGarage()
 	clearRows(garagePanel)
+	filterTabs()
 	local owned = ownedSet()
 
 	for i, def in Catalog.Vehicles do
+		if not matchesFilter(def) then
+			continue
+		end
 		local frame = row(garagePanel, i, 56)
 		text({
 			Position = UDim2.fromOffset(8, 4),
@@ -181,6 +228,9 @@ local function refreshGarage()
 		local event = def.RequiresEvent and EventCatalog.ById[def.RequiresEvent]
 		local unlocked = not def.RequiresEvent or player:GetAttribute(`Done_{def.RequiresEvent}`) == true
 		local sub = KIND_LABEL[def.Kind] or ""
+		if def.Kind == "car" and ORIGIN_LABEL[def.Origin] then
+			sub ..= ` {ORIGIN_LABEL[def.Origin]}`
+		end
 		if not owned[def.Id] and not unlocked and event then
 			sub ..= `  |  Clear: {event.Name}`
 		end
@@ -317,8 +367,29 @@ notifyRemote.OnClientEvent:Connect(function(message: string)
 	Debris:AddItem(toast, 1.5)
 end)
 
+-- 対決戦の表示(開催中は残り時間とスコア、それ以外は次の開始まで)
+local function updateShowdown()
+	local state = ReplicatedStorage:FindFirstChild("Showdown")
+	if not state then
+		showdownLabel.Text = ""
+		return
+	end
+	local now = workspace:GetServerTimeNow()
+	local function clock(seconds: number): string
+		seconds = math.max(0, math.floor(seconds))
+		return string.format("%d:%02d", seconds // 60, seconds % 60)
+	end
+	if state:GetAttribute("Active") then
+		showdownLabel.Text = `SHOWDOWN {clock((state:GetAttribute("EndsAt") or now) - now)}   JP {state:GetAttribute("ScoreJP") or 0} - {state:GetAttribute("ScoreOS") or 0} IMPORT`
+	else
+		local nextAt = state:GetAttribute("NextAt")
+		showdownLabel.Text = nextAt and `Next showdown in {clock(nextAt - now)}` or ""
+	end
+end
+
 -- 速度 / 高度 / 体力
 RunService.RenderStepped:Connect(function()
+	updateShowdown()
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
 	local seat = humanoid and humanoid.SeatPart
 	local car = seat and seat:IsA("VehicleSeat") and seat.Parent

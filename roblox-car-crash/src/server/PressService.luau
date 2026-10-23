@@ -8,6 +8,7 @@ local Remotes = require(Shared.Remotes)
 
 local CoinService = require(script.Parent.CoinService)
 local EventService = require(script.Parent.EventService)
+local ShowdownService = require(script.Parent.ShowdownService)
 
 local PressService = {}
 
@@ -305,6 +306,7 @@ local function runPress(carService, player: Player, model: Model, rig)
 		if rig.Def.Origin then
 			EventService.add(player, `press_{rig.Def.Origin}`, 1)
 		end
+		ShowdownService.score(player, rig.Def.Origin, 1)
 		notify:FireClient(player, `CRUSHED! +{Config.PressReward} COINS`)
 	end
 

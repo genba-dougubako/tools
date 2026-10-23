@@ -38,6 +38,8 @@ DamageService      衝突検知・体力・報酬(乗り物の種類を問わな
 PressService       プレス機 → EventService へ press_* を送る
 RingService        リング通過判定 → コイン、EventService へ ring_pass / course_clear
 EventService       統計の集計とイベントのクリア判定。クリアで「購入権」が解放される
+LiftService        Sky Crane のウインチ(F で真下の車を吊る) → cars_lifted
+ShowdownService    国産 vs 海外 対決戦(10 分ごとに 3 分間のラウンド) → showdown_win
 CoinService        コイン残高
 ```
 
@@ -64,6 +66,8 @@ CoinService        コイン残高
 | `src/server/PressService.luau` | プレス機の生成、作動の検証、潰れ演出、コイン付与、再出現 |
 | `src/server/RingService.luau` | 空のリング(通過判定、コンボ、完走ボーナス) |
 | `src/server/EventService.luau` | 統計とイベントのクリア判定 |
+| `src/server/LiftService.luau` | Sky Crane のウインチ |
+| `src/server/ShowdownService.luau` | 国産 vs 海外 対決戦のラウンド進行と勝敗 |
 | `src/server/CoinService.luau` | コイン残高 |
 | `src/server/DataService.luau` | DataStore によるお金・所持車のセーブ |
 | `src/server/MapBuilder.luau` | テストマップ(道路、ジャンプ台、レンガ壁、巨大壁、ダミー車) |
@@ -71,9 +75,25 @@ CoinService        コイン残高
 | `src/client/Flight.client.luau` | 飛行機・ヘリの上下入力(E/Shift 上、Q/Ctrl 下) |
 | `src/client/Effects.client.luau` | プレス時のカメラ揺れ |
 
+## 収録内容
+
+- **車 44 台:** 国産系 21(新規 20 + Rusty Sedan)、海外系 23(新規 20 + 初期 3)。体格クラス(軽/ミニバン/SUV/ピックアップ/スポーツ/スーパーカーなど)ごとに形と性能が変わる。名前は全て自作、`Inspiration` に参考にした実在車をメモ。
+- **飛行機 6:** Sky Trainer、Aero Stunt(複葉)、Bush Hopper(フロート)、Sky Jet、Air Liner(旅客機)、Strike Fighter
+- **ヘリ 4:** Rescue Copter、Sky Crane(タンデムローター、車を吊れる)、Gunship、Tilt Rotor
+- **イベント 4(クリアで購入権):**
+
+| イベント | 条件 | 解放 |
+| --- | --- | --- |
+| Scrap Quota | プレス 5 台(国産系 2+、海外系 2+) | Heavy Truck、Sky Crane |
+| Sky Ring Challenge | リング完走 1 回 | Sky Jet |
+| Heavy Lift | Sky Crane で 3 台吊る | Gunship、Tilt Rotor |
+| Domestic vs Import Showdown | 対決戦で勝った側に貢献 | Midship Blade、Wedge Supercar、Scarlet V8、Strike Fighter |
+
 ## 飛行機・ヘリの操作
 - 飛行機: `W/S` 機首下げ/上げ、`A/D` 旋回、`E/Shift` 加速、`Q/Ctrl` 減速。離陸速度まで加速すると機首が上がる。
 - ヘリ: `W/S` 前進/後退、`A/D` 旋回、`E/Shift` 上昇、`Q/Ctrl` 下降(押さなければホバリング)。
+- Sky Crane: 車の真上で `F` を押すと吊る、もう一度 `F` で離す(誰も乗っていない車だけ)。
+- 対決戦: 起動 1 分後から 10 分ごとに 3 分間。プレスで潰した車のデザイン(国産系/海外系)に点が入り、勝った側でプレスした人がクリア。
 - リング: 番号順に通る。連続で通るとコンボ加算、15 秒以内に次を通れないとやり直し、全部通ると完走ボーナス +100。
 
 ## 衝突ダメージの仕組み
