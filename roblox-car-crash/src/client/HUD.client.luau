@@ -168,11 +168,11 @@ local grid = new("ScrollingFrame", {
 	CanvasSize = UDim2.new(),
 	ScrollBarThickness = 6,
 }, garage)
-local gridLayout = new("UIGridLayout", { CellPadding = UDim2.fromOffset(8, 8), CellSize = UDim2.new(0.5, -4, 0, 118), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
+local gridLayout = new("UIGridLayout", { CellPadding = UDim2.fromOffset(8, 8), CellSize = UDim2.new(0.5, -4, 0, 140), SortOrder = Enum.SortOrder.LayoutOrder }, grid)
 grid:GetPropertyChangedSignal("AbsoluteSize"):Connect(function()
 	-- 広い画面は3列、狭い画面(携帯)は2列
 	local columns = grid.AbsoluteSize.X > 520 and 3 or 2
-	gridLayout.CellSize = UDim2.new(1 / columns, -8 * (columns - 1) / columns, 0, 118)
+	gridLayout.CellSize = UDim2.new(1 / columns, -8 * (columns - 1) / columns, 0, 140)
 end)
 
 local eventsList = new("ScrollingFrame", {
@@ -248,6 +248,15 @@ local function refreshPaint()
 	end
 end
 
+-- 加速を ★1〜5 で表す(車と飛行機。ヘリは加速の値がないので出さない)
+local function accelStars(accel: number?): string
+	if not accel then
+		return ""
+	end
+	local stars = math.clamp(math.floor((accel - 25) / 18) + 1, 1, 5)
+	return "  加速 " .. string.rep("★", stars) .. string.rep("☆", 5 - stars)
+end
+
 local function card(def, order: number, owned)
 	local frame = new("Frame", { LayoutOrder = order, BackgroundColor3 = CARD_BG }, grid)
 	corner(frame, 10)
@@ -279,6 +288,15 @@ local function card(def, order: number, owned)
 		Size = UDim2.new(1, -16, 0, 20),
 		Text = info,
 		TextColor3 = Color3.fromRGB(180, 180, 190),
+		TextXAlignment = Enum.TextXAlignment.Left,
+	}, frame)
+
+	-- 1 stud/s は約 1 km/h(1 stud ≒ 0.28 m)
+	text({
+		Position = UDim2.fromOffset(8, 64),
+		Size = UDim2.new(1, -16, 0, 18),
+		Text = `最高 {math.floor(def.MaxSpeed * 0.28 * 3.6)} km/h{accelStars(def.Accel)}`,
+		TextColor3 = Color3.fromRGB(255, 210, 120),
 		TextXAlignment = Enum.TextXAlignment.Left,
 	}, frame)
 

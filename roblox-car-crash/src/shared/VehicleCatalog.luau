@@ -20,12 +20,66 @@ local CLASSES = {
 	super = { Body = "sports", Size = Vector3.new(6.6, 0.8, 13.5), WheelRadius = 1.25, WheelWidth = 1.1, CabinHeight = 1.2, MaxSpeed = 190, Accel = 95, Health = 90 },
 }
 
+-- 車ごとの速度。最高速度は studs/s(画面の km/h とほぼ同じ数字)、加速は数字が大きいほど速い。
+-- 参考にした実在車の性格に合わせて付けている。調整はここだけ触ればよい。
+local SPEEDS = {
+	-- 国産系
+	sedan = { MaxSpeed = 80, Accel = 40 },
+	pocket_hatch = { MaxSpeed = 95, Accel = 50 },
+	commuter = { MaxSpeed = 100, Accel = 48 },
+	family_mover = { MaxSpeed = 88, Accel = 42 },
+	kei_tower = { MaxSpeed = 72, Accel = 38 },
+	kei_slider = { MaxSpeed = 70, Accel = 36 },
+	tall_cube = { MaxSpeed = 78, Accel = 40 },
+	compact_mover = { MaxSpeed = 90, Accel = 44 },
+	mini_crawler = { MaxSpeed = 68, Accel = 40 },
+	work_van = { MaxSpeed = 82, Accel = 34 },
+	grand_lounge = { MaxSpeed = 105, Accel = 46 },
+	desert_chief = { MaxSpeed = 100, Accel = 48 },
+	eco_wedge = { MaxSpeed = 105, Accel = 58 },
+	thunder_gt = { MaxSpeed = 200, Accel = 100 },
+	sunrise_coupe = { MaxSpeed = 180, Accel = 85 },
+	drift_coupe = { MaxSpeed = 160, Accel = 72 },
+	redline_hatch = { MaxSpeed = 170, Accel = 82 },
+	breeze_roadster = { MaxSpeed = 140, Accel = 65 },
+	rotor_coupe = { MaxSpeed = 175, Accel = 80 },
+	rally_x = { MaxSpeed = 165, Accel = 92 },
+	midship_blade = { MaxSpeed = 210, Accel = 98 },
+	-- 海外系
+	racer = { MaxSpeed = 140, Accel = 70 },
+	truck = { MaxSpeed = 80, Accel = 35 },
+	monster = { MaxSpeed = 100, Accel = 40 },
+	volt_crossover = { MaxSpeed = 150, Accel = 95 },
+	volt_sedan = { MaxSpeed = 160, Accel = 105 },
+	ranch_pickup = { MaxSpeed = 110, Accel = 50 },
+	prairie_pickup = { MaxSpeed = 108, Accel = 48 },
+	euro_crossover = { MaxSpeed = 115, Accel = 52 },
+	jade_sedan = { MaxSpeed = 110, Accel = 60 },
+	sparrow_ev = { MaxSpeed = 88, Accel = 55 },
+	stallion_gt = { MaxSpeed = 175, Accel = 82 },
+	arrow_v8 = { MaxSpeed = 205, Accel = 95 },
+	muscle_coupe = { MaxSpeed = 170, Accel = 80 },
+	brute_coupe = { MaxSpeed = 180, Accel = 78 },
+	rock_climber = { MaxSpeed = 90, Accel = 42 },
+	euro_hatch = { MaxSpeed = 120, Accel = 55 },
+	autobahn_sport = { MaxSpeed = 195, Accel = 90 },
+	box_commander = { MaxSpeed = 130, Accel = 55 },
+	ring_supercar = { MaxSpeed = 220, Accel = 100 },
+	classic_rear = { MaxSpeed = 210, Accel = 102 },
+	wedge_supercar = { MaxSpeed = 230, Accel = 110 },
+	scarlet_v8 = { MaxSpeed = 228, Accel = 108 },
+	city_mini = { MaxSpeed = 110, Accel = 58 },
+}
+
 local function car(id: string, origin: string, class: string, name: string, price: number, inspiration: string, overrides)
 	local def = { Id = id, Kind = "car", Origin = origin, Name = name, Price = price, Inspiration = inspiration }
 	for k, v in CLASSES[class] do
 		def[k] = v
 	end
 	for k, v in overrides or {} do
+		def[k] = v
+	end
+	for k, v in SPEEDS[id] or {} do
 		def[k] = v
 	end
 	return def
@@ -35,16 +89,14 @@ local rgb = Color3.fromRGB
 
 local Vehicles = {
 	-- ===== 初期からの車 =====
-	car("sedan", "jp", "sedan", "Rusty Sedan", 0, "-", { MaxSpeed = 85, Accel = 45, Color = rgb(196, 40, 28) }),
-	car("racer", "os", "sports", "Street Racer", 1500, "-", { Size = Vector3.new(6, 1, 13.5), CabinHeight = 1.5, MaxSpeed = 140, Accel = 70, Color = rgb(13, 105, 172) }),
+	car("sedan", "jp", "sedan", "Rusty Sedan", 0, "-", { Color = rgb(196, 40, 28) }),
+	car("racer", "os", "sports", "Street Racer", 1500, "-", { Size = Vector3.new(6, 1, 13.5), CabinHeight = 1.5, Color = rgb(13, 105, 172) }),
 	car("truck", "os", "pickup", "Heavy Truck", 3500, "-", {
 		Body = "sedan",
 		Size = Vector3.new(8, 1.8, 17),
 		WheelRadius = 1.8,
 		WheelWidth = 1.4,
 		CabinHeight = 3,
-		MaxSpeed = 80,
-		Accel = 35,
 		Health = 260,
 		DamageScale = 0.5,
 		RequiresEvent = "scrap_quota",
@@ -55,8 +107,6 @@ local Vehicles = {
 		WheelRadius = 3.2,
 		WheelWidth = 2.4,
 		CabinHeight = 2.2,
-		MaxSpeed = 100,
-		Accel = 40,
 		Health = 500,
 		DamageScale = 0.35,
 		Color = rgb(75, 151, 75),
@@ -70,40 +120,40 @@ local Vehicles = {
 	car("kei_slider", "jp", "kei", "Kei Slider", 600, "Suzuki Spacia", { Color = rgb(255, 200, 120) }),
 	car("tall_cube", "jp", "kei", "Tall Cube", 900, "Toyota Roomy", { Size = Vector3.new(5.4, 1.2, 11), Color = rgb(90, 90, 100) }),
 	car("compact_mover", "jp", "mpv", "Compact Mover", 1300, "Honda Freed", { Size = Vector3.new(5.8, 1.3, 13), Color = rgb(180, 200, 220) }),
-	car("mini_crawler", "jp", "offroad", "Mini Crawler", 1600, "Suzuki Jimny", { Size = Vector3.new(4.8, 1.5, 9), MaxSpeed = 65, Color = rgb(160, 170, 90) }),
+	car("mini_crawler", "jp", "offroad", "Mini Crawler", 1600, "Suzuki Jimny", { Size = Vector3.new(4.8, 1.5, 9), Color = rgb(160, 170, 90) }),
 	car("work_van", "jp", "bigvan", "Work Van", 1800, "Toyota HiAce", { Color = rgb(250, 250, 250) }),
-	car("grand_lounge", "jp", "bigvan", "Grand Lounge", 4500, "Toyota Alphard", { Size = Vector3.new(6.6, 1.5, 15.5), MaxSpeed = 90, Color = rgb(20, 20, 25) }),
+	car("grand_lounge", "jp", "bigvan", "Grand Lounge", 4500, "Toyota Alphard", { Size = Vector3.new(6.6, 1.5, 15.5), Color = rgb(20, 20, 25) }),
 	car("desert_chief", "jp", "suv", "Desert Chief", 5500, "Toyota Land Cruiser", { Health = 220, Color = rgb(200, 190, 165) }),
-	car("eco_wedge", "jp", "hatch", "Eco Wedge", 1500, "Toyota Prius", { Size = Vector3.new(6, 1.1, 13), Accel = 55, Color = rgb(200, 210, 220) }),
+	car("eco_wedge", "jp", "hatch", "Eco Wedge", 1500, "Toyota Prius", { Size = Vector3.new(6, 1.1, 13), Color = rgb(200, 210, 220) }),
 	car("thunder_gt", "jp", "super", "Thunder GT", 22000, "Nissan GT-R", { Body = "sports", Size = Vector3.new(6.6, 1, 14), CabinHeight = 1.5, Health = 130, Color = rgb(70, 75, 85) }),
-	car("sunrise_coupe", "jp", "sports", "Sunrise Coupe", 12000, "Toyota Supra", { MaxSpeed = 165, Color = rgb(230, 90, 30) }),
-	car("drift_coupe", "jp", "sports", "Drift Coupe", 7000, "Toyota GR86", { MaxSpeed = 140, Color = rgb(240, 240, 245) }),
-	car("redline_hatch", "jp", "hatch", "Redline Hatch", 9000, "Honda Civic Type R", { MaxSpeed = 150, Accel = 80, Color = rgb(235, 235, 235) }),
-	car("breeze_roadster", "jp", "sports", "Breeze Roadster", 6000, "Mazda Roadster", { Size = Vector3.new(5.6, 0.9, 11.5), CabinHeight = 1, MaxSpeed = 130, Color = rgb(170, 20, 30) }),
-	car("rotor_coupe", "jp", "sports", "Rotor Coupe", 11000, "Mazda RX-7", { MaxSpeed = 160, Color = rgb(250, 210, 30) }),
-	car("rally_x", "jp", "sedan", "Rally Sedan X", 10000, "Mitsubishi Lancer Evolution", { MaxSpeed = 150, Accel = 85, Color = rgb(30, 80, 170) }),
+	car("sunrise_coupe", "jp", "sports", "Sunrise Coupe", 12000, "Toyota Supra", { Color = rgb(230, 90, 30) }),
+	car("drift_coupe", "jp", "sports", "Drift Coupe", 7000, "Toyota GR86", { Color = rgb(240, 240, 245) }),
+	car("redline_hatch", "jp", "hatch", "Redline Hatch", 9000, "Honda Civic Type R", { Color = rgb(235, 235, 235) }),
+	car("breeze_roadster", "jp", "sports", "Breeze Roadster", 6000, "Mazda Roadster", { Size = Vector3.new(5.6, 0.9, 11.5), CabinHeight = 1, Color = rgb(170, 20, 30) }),
+	car("rotor_coupe", "jp", "sports", "Rotor Coupe", 11000, "Mazda RX-7", { Color = rgb(250, 210, 30) }),
+	car("rally_x", "jp", "sedan", "Rally Sedan X", 10000, "Mitsubishi Lancer Evolution", { Color = rgb(30, 80, 170) }),
 	car("midship_blade", "jp", "super", "Midship Blade", 30000, "Honda NSX", { RequiresEvent = "jp_vs_os", Color = rgb(200, 30, 30) }),
 
 	-- ===== 海外系 20 =====
-	car("volt_crossover", "os", "suv", "Volt Crossover", 6000, "Tesla Model Y", { Accel = 85, MaxSpeed = 120, Color = rgb(240, 240, 245) }),
-	car("volt_sedan", "os", "sedan", "Volt Sedan", 5500, "Tesla Model 3", { Accel = 90, MaxSpeed = 130, Color = rgb(30, 30, 35) }),
+	car("volt_crossover", "os", "suv", "Volt Crossover", 6000, "Tesla Model Y", { Color = rgb(240, 240, 245) }),
+	car("volt_sedan", "os", "sedan", "Volt Sedan", 5500, "Tesla Model 3", { Color = rgb(30, 30, 35) }),
 	car("ranch_pickup", "os", "pickup", "Ranch Pickup", 4000, "Ford F-Series", { Color = rgb(40, 60, 120) }),
 	car("prairie_pickup", "os", "pickup", "Prairie Pickup", 4000, "Chevrolet Silverado", { Color = rgb(150, 20, 20) }),
 	car("euro_crossover", "os", "suv", "Euro Crossover", 3800, "Volkswagen Tiguan", { Color = rgb(130, 140, 150) }),
-	car("jade_sedan", "os", "sedan", "Jade Sedan", 3000, "BYD King", { Accel = 60, Color = rgb(40, 110, 90) }),
-	car("sparrow_ev", "os", "mini", "Sparrow City EV", 1500, "BYD Seagull", { Accel = 60, Color = rgb(200, 230, 240) }),
-	car("stallion_gt", "os", "sports", "Stallion GT", 9000, "Ford Mustang", { MaxSpeed = 155, Color = rgb(30, 90, 200) }),
-	car("arrow_v8", "os", "sports", "Arrow V8", 16000, "Chevrolet Corvette", { MaxSpeed = 175, Color = rgb(250, 200, 0) }),
+	car("jade_sedan", "os", "sedan", "Jade Sedan", 3000, "BYD King", { Color = rgb(40, 110, 90) }),
+	car("sparrow_ev", "os", "mini", "Sparrow City EV", 1500, "BYD Seagull", { Color = rgb(200, 230, 240) }),
+	car("stallion_gt", "os", "sports", "Stallion GT", 9000, "Ford Mustang", { Color = rgb(30, 90, 200) }),
+	car("arrow_v8", "os", "sports", "Arrow V8", 16000, "Chevrolet Corvette", { Color = rgb(250, 200, 0) }),
 	car("muscle_coupe", "os", "sports", "Muscle Coupe", 8500, "Chevrolet Camaro", { Size = Vector3.new(6.4, 1, 13.5), Color = rgb(230, 120, 20) }),
 	car("brute_coupe", "os", "sports", "Brute Coupe", 9500, "Dodge Challenger", { Size = Vector3.new(6.6, 1.1, 14.5), Health = 120, Color = rgb(90, 30, 120) }),
 	car("rock_climber", "os", "offroad", "Rock Climber 4x4", 4500, "Jeep Wrangler", { Size = Vector3.new(6, 1.6, 11.5), Color = rgb(60, 100, 50) }),
 	car("euro_hatch", "os", "hatch", "Euro Hatch", 2500, "Volkswagen Golf", { Color = rgb(60, 70, 160) }),
-	car("autobahn_sport", "os", "sedan", "Autobahn Sport", 14000, "BMW M3", { MaxSpeed = 170, Accel = 85, Color = rgb(20, 120, 160) }),
-	car("box_commander", "os", "offroad", "Box Commander", 20000, "Mercedes-Benz G-Class", { Size = Vector3.new(6.4, 1.8, 13), CabinHeight = 2.8, Health = 260, MaxSpeed = 95, Color = rgb(25, 25, 25) }),
+	car("autobahn_sport", "os", "sedan", "Autobahn Sport", 14000, "BMW M3", { Color = rgb(20, 120, 160) }),
+	car("box_commander", "os", "offroad", "Box Commander", 20000, "Mercedes-Benz G-Class", { Size = Vector3.new(6.4, 1.8, 13), CabinHeight = 2.8, Health = 260, Color = rgb(25, 25, 25) }),
 	car("ring_supercar", "os", "super", "Ring Supercar", 28000, "Audi R8", { Color = rgb(220, 220, 225) }),
-	car("classic_rear", "os", "sports", "Classic Rear-Engine", 18000, "Porsche 911", { Size = Vector3.new(6, 1, 13), MaxSpeed = 175, Color = rgb(190, 190, 195) }),
-	car("wedge_supercar", "os", "super", "Wedge Supercar", 35000, "Lamborghini Huracan", { MaxSpeed = 205, RequiresEvent = "jp_vs_os", Color = rgb(120, 200, 40) }),
-	car("scarlet_v8", "os", "super", "Scarlet V8", 35000, "Ferrari 488", { MaxSpeed = 205, RequiresEvent = "jp_vs_os", Color = rgb(200, 0, 0) }),
+	car("classic_rear", "os", "sports", "Classic Rear-Engine", 18000, "Porsche 911", { Size = Vector3.new(6, 1, 13), Color = rgb(190, 190, 195) }),
+	car("wedge_supercar", "os", "super", "Wedge Supercar", 35000, "Lamborghini Huracan", { RequiresEvent = "jp_vs_os", Color = rgb(120, 200, 40) }),
+	car("scarlet_v8", "os", "super", "Scarlet V8", 35000, "Ferrari 488", { RequiresEvent = "jp_vs_os", Color = rgb(200, 0, 0) }),
 	car("city_mini", "os", "mini", "City Mini", 2000, "MINI Cooper", { Color = rgb(20, 70, 50) }),
 
 	-- ===== 飛行機 10 / ヘリ =====
