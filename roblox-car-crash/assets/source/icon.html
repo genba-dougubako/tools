@@ -1,0 +1,32 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="en.css"><link rel="stylesheet" href="jp.css">
+<style>html,body{margin:0;background:#000}svg{display:block}
+.en{font-family:Bungee}.outline{paint-order:stroke;stroke-linejoin:round}</style></head><body>
+<div id="art"></div>
+<script src="parts.js"></script>
+<script>
+let sparks = "";
+[[95,345,34,10,"#fff4a0"],[420,350,30,25,"#ffd23a"],[250,300,20,0,"#ffffff"],[460,410,22,15,"#ffb000"],[60,410,20,5,"#ffe066"]]
+  .forEach(s => sparks += spark(...s));
+document.getElementById("art").innerHTML = `
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>${hazardDefs}
+    <radialGradient id="bg" cx=".5" cy=".55" r=".7"><stop offset="0" stop-color="#ffb347"/><stop offset=".6" stop-color="#e2542a"/><stop offset="1" stop-color="#6e1410"/></radialGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#bg)"/>
+  <!-- 右上: リングと飛行機 -->
+  ${ring(400, 120, 34, 72, 12)}
+  <g transform="translate(400 120) rotate(-14) scale(0.42)">${plane}</g>
+  <!-- プレスの板(上から) -->
+  <rect x="150" y="0" width="22" height="200" fill="#c6cbd3" stroke="#202227" stroke-width="5"/>
+  <rect x="-10" y="190" width="380" height="80" fill="url(#hazard)" stroke="#202227" stroke-width="7"/>
+  <!-- 潰れた車 -->
+  <g transform="translate(230 392) scale(0.82 0.95)">${crushedCar}</g>
+  <rect x="-10" y="392" width="532" height="20" fill="#3b3c42"/>
+  ${sparks}
+  ${coin(440, 300, 26)}
+  <!-- タイトル -->
+  <rect x="0" y="412" width="512" height="100" fill="#14213d"/>
+  <text class="en outline" x="256" y="485" text-anchor="middle" font-size="62" fill="#ffffff" stroke="#14213d" stroke-width="10">CRUSH&amp;FLY</text>
+</svg>`;
+</script></body></html>

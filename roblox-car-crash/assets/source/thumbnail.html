@@ -1,0 +1,57 @@
+<!doctype html><html><head><meta charset="utf-8">
+<link rel="stylesheet" href="en.css"><link rel="stylesheet" href="jp.css">
+<style>html,body{margin:0;background:#000}svg{display:block}
+.en{font-family:Bungee}.jp{font-family:'Dela Gothic One'}
+.outline{paint-order:stroke;stroke-linejoin:round}</style></head><body>
+<div id="art"></div>
+<script src="parts.js"></script>
+<script>
+let sparks = "";
+[[260,600,46,10,"#fff4a0"],[700,610,40,30,"#ffd23a"],[480,560,30,0,"#fff"],[820,660,34,20,"#ffb000"],[150,680,28,15,"#ffe066"],[600,520,22,40,"#fff4a0"],[360,530,26,5,"#ffd23a"]]
+  .forEach(s => sparks += spark(...s));
+document.getElementById("art").innerHTML = `
+<svg width="1920" height="1080" viewBox="0 0 1920 1080" xmlns="http://www.w3.org/2000/svg">
+  <defs>${hazardDefs}
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1550c8"/><stop offset=".7" stop-color="#6cc4ff"/><stop offset="1" stop-color="#bfe8ff"/></linearGradient>
+    <linearGradient id="ground" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#d9a35f"/><stop offset="1" stop-color="#8a5a2b"/></linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#sky)"/>
+  <circle cx="1650" cy="180" r="90" fill="#fff6c4" opacity=".9"/>
+  <!-- 雲 -->
+  <g fill="#ffffff" opacity=".85"><ellipse cx="1180" cy="560" rx="160" ry="40"/><ellipse cx="1250" cy="535" rx="110" ry="45"/><ellipse cx="1700" cy="620" rx="140" ry="35"/></g>
+  <!-- 地面と道路 -->
+  <path d="M0 790 L1920 740 L1920 1080 L0 1080 Z" fill="url(#ground)"/>
+  <path d="M900 1080 L1180 760 L1330 756 L1500 1080 Z" fill="#3b3c42"/>
+  <path d="M1190 1080 L1250 770 L1262 770 L1230 1080 Z" fill="#ffd23a"/>
+  <!-- 空のリングと飛行機 -->
+  ${ring(1600, 330, 60, 130, 16)}
+  ${ring(1330, 420, 95, 200, 24)}
+  <g transform="translate(1340 420) rotate(-12) scale(0.95)">${plane}</g>
+  <path d="M1050 470 Q1150 460 1200 445" stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity=".6" fill="none"/>
+  <!-- プレス機 -->
+  <rect x="90" y="250" width="80" height="560" fill="url(#steel)" stroke="#202227" stroke-width="8"/>
+  <rect x="780" y="250" width="80" height="560" fill="url(#steel)" stroke="#202227" stroke-width="8"/>
+  <rect x="60" y="210" width="830" height="100" rx="10" fill="url(#steel)" stroke="#202227" stroke-width="8"/>
+  <rect x="270" y="300" width="40" height="320" fill="#c6cbd3" stroke="#202227" stroke-width="6"/>
+  <rect x="640" y="300" width="40" height="320" fill="#c6cbd3" stroke="#202227" stroke-width="6"/>
+  <rect x="170" y="610" width="610" height="90" fill="url(#hazard)" stroke="#202227" stroke-width="8"/>
+  <circle cx="475" cy="190" r="26" fill="#ff2a2a" filter="url(#glow)"/>
+  <!-- 潰れる車 -->
+  <g transform="translate(475 800) scale(1.05 1)">${crushedCar}</g>
+  ${sparks}
+  <!-- 床 -->
+  <rect x="40" y="800" width="870" height="26" fill="#55575e" stroke="#202227" stroke-width="6"/>
+  <!-- コイン -->
+  ${coin(980, 700, 42)}${coin(1050, 640, 32)}${coin(930, 610, 26)}
+  <!-- タイトル -->
+  <g transform="translate(1180 210) rotate(-4)">
+    <text class="en outline" text-anchor="middle" font-size="170" fill="#ffffff" stroke="#14213d" stroke-width="26">CRUSH &amp; FLY</text>
+    <text class="jp outline" text-anchor="middle" y="95" font-size="70" fill="#ffd23a" stroke="#14213d" stroke-width="16">クラッシュ＆フライ</text>
+  </g>
+  <!-- キャッチコピー -->
+  <g transform="translate(1440 950) rotate(-3)">
+    <rect x="-420" y="-70" width="840" height="110" rx="18" fill="#e8302a" stroke="#14213d" stroke-width="8"/>
+    <text class="jp" text-anchor="middle" y="16" font-size="62" fill="#ffffff">車を潰して、空を飛べ！</text>
+  </g>
+</svg>`;
+</script></body></html>
