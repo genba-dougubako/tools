@@ -35,6 +35,11 @@ return {
 	-- プレス機
 	PressReward = 100,
 
+	-- 右上の地図(ワールド座標の中心と、中心から端までの距離 studs)
+	MinimapCenter = Vector3.new(60, 0, -170),
+	MinimapRange = 320,
+	HidePlayerList = true, -- 右上の標準プレイヤー一覧を隠して地図を角に置く
+
 	AutoSaveInterval = 60,
 	DataStoreName = "CarCrashV1",
 }

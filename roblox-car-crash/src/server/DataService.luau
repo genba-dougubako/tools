@@ -23,6 +23,7 @@ local function publish(player: Player)
 	table.sort(ids)
 	player:SetAttribute("Owned", table.concat(ids, ","))
 	player.leaderstats.Cash.Value = profile.Cash
+	player:SetAttribute("Paint", profile.Paint)
 end
 
 local function save(player: Player)
@@ -31,7 +32,7 @@ local function save(player: Player)
 		return
 	end
 	local ok, err = pcall(function()
-		store:SetAsync(key(player), { Cash = profile.Cash, Owned = profile.Owned })
+		store:SetAsync(key(player), { Cash = profile.Cash, Owned = profile.Owned, Paint = profile.Paint })
 	end)
 	if not ok then
 		warn(`Save failed for {player.Name}: {err}`)
@@ -46,7 +47,7 @@ local function onPlayerAdded(player: Player)
 	cash.Parent = leaderstats
 	leaderstats.Parent = player
 
-	local profile = { Cash = Config.StartCash, Owned = {}, Loaded = false }
+	local profile = { Cash = Config.StartCash, Owned = {}, Paint = 0, Loaded = false }
 	for _, id in Config.StartCars do
 		profile.Owned[id] = true
 	end
@@ -57,6 +58,7 @@ local function onPlayerAdded(player: Player)
 	if ok then
 		if data then
 			profile.Cash = data.Cash or profile.Cash
+			profile.Paint = typeof(data.Paint) == "number" and data.Paint or 0
 			for id in data.Owned or {} do
 				if Catalog.ById[id] then
 					profile.Owned[id] = true
@@ -99,6 +101,20 @@ function DataService.grant(player: Player, carId: string)
 	local profile = profiles[player]
 	if profile then
 		profile.Owned[carId] = true
+		publish(player)
+	end
+end
+
+-- 塗装の番号(0 = 車種の標準色)
+function DataService.getPaint(player: Player): number
+	local profile = profiles[player]
+	return profile and profile.Paint or 0
+end
+
+function DataService.setPaint(player: Player, index: number)
+	local profile = profiles[player]
+	if profile then
+		profile.Paint = index
 		publish(player)
 	end
 end

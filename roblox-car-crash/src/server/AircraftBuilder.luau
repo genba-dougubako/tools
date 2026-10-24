@@ -1,18 +1,9 @@
--- 飛行機(plane)とヘリ(heli)。物理は「アーケード式」:
--- サーバーが姿勢と速度の目標値を毎フレーム計算し、AlignOrientation / LinearVelocity で機体を追従させる。
+-- 飛行機(plane)とヘリ(heli)の組み立て。物理は「アーケード式」で、操縦の計算は
+-- Shared/VehicleControl が運転者の端末で行い、AlignOrientation / LinearVelocity で機体を追従させる。
+
+local VehicleControl = require(game:GetService("ReplicatedStorage").Shared.VehicleControl)
 
 local AircraftBuilder = {}
-
-local function lerp(a: number, b: number, t: number): number
-	return a + (b - a) * t
-end
-
-local function moveToward(value: number, target: number, step: number): number
-	if value < target then
-		return math.min(value + step, target)
-	end
-	return math.max(value - step, target)
-end
 
 local function newAttachment(parent: BasePart, position: Vector3, orientation: Vector3?): Attachment
 	local att = Instance.new("Attachment")
@@ -23,10 +14,7 @@ local function newAttachment(parent: BasePart, position: Vector3, orientation: V
 end
 
 function AircraftBuilder.rideHeight(def): number
-	if def.Kind == "heli" then
-		return def.Size.Y / 2 + 1.2
-	end
-	return def.Size.Y / 2 + (def.Style == "bush" and 1.85 or 1.1)
+	return VehicleControl.rideHeight(def)
 end
 
 function AircraftBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName: string?)
@@ -97,6 +85,8 @@ function AircraftBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName:
 		-- Orientation で X 軸(ヒンジ軸)を回す: (0,0,90) で Y、(0,90,0) で Z
 		local orientation = axis == "Y" and Vector3.new(0, 0, 90) or Vector3.new(0, 90, 0)
 		local hinge = Instance.new("HingeConstraint")
+		hinge.Name = "RotorMotor"
+		hinge:SetAttribute("Speed", speed)
 		hinge.Attachment0 = newAttachment(chassis, localPos, orientation)
 		hinge.Attachment1 = newAttachment(blade, Vector3.zero, orientation)
 		hinge.ActuatorType = Enum.ActuatorType.Motor
@@ -243,6 +233,7 @@ function AircraftBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName:
 	-- 姿勢・速度の目標を与える拘束(運転手がいる間だけ有効)
 	local att = newAttachment(chassis, Vector3.zero)
 	local align = Instance.new("AlignOrientation")
+	align.Name = "FlightAlign"
 	align.Mode = Enum.OrientationAlignmentMode.OneAttachment
 	align.Attachment0 = att
 	align.RigidityEnabled = false
@@ -254,6 +245,7 @@ function AircraftBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName:
 	align.Parent = chassis
 
 	local linear = Instance.new("LinearVelocity")
+	linear.Name = "FlightVelocity"
 	linear.Attachment0 = att
 	linear.RelativeTo = Enum.ActuatorRelativeTo.World
 	linear.VelocityConstraintMode = Enum.VelocityConstraintMode.Vector
@@ -262,11 +254,6 @@ function AircraftBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName:
 	linear.Enabled = false
 	linear.Parent = chassis
 
-	local rayParams = RaycastParams.new()
-	rayParams.FilterType = Enum.RaycastFilterType.Exclude
-	rayParams.FilterDescendantsInstances = { model }
-
-	local _, yaw = cf:ToEulerAnglesYXZ()
 	local rig = {
 		Kind = def.Kind,
 		Def = def,
@@ -277,110 +264,9 @@ function AircraftBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName:
 		Linear = linear,
 		Rotors = rotors,
 		CanLift = def.CanLift == true,
-		RayParams = rayParams,
-		Lift = 0, -- クライアントから届く上下入力 -1..1
-		State = { yaw = yaw, pitch = 0, roll = 0, speed = 0, throttle = 0, fwd = 0, climb = 0 },
-		Update = def.Kind == "plane" and AircraftBuilder.updatePlane or AircraftBuilder.updateHeli,
-		Idle = AircraftBuilder.idle,
 	}
+	model:SetAttribute("CanLift", def.CanLift == true)
 	return model, rig
-end
-
-local function isGrounded(rig): boolean
-	local def = rig.Def
-	local origin = rig.Chassis.Position
-	local hit = workspace:Raycast(origin, Vector3.new(0, -(AircraftBuilder.rideHeight(def) + 1.2), 0), rig.RayParams)
-	return hit ~= nil
-end
-
-local function spinRotors(rig, on: boolean)
-	for _, rotor in rig.Rotors do
-		rotor.Hinge.MotorMaxTorque = on and 1e5 or 0
-		rotor.Hinge.AngularVelocity = on and rotor.Speed or 0
-	end
-end
-
-local function crashed(rig): boolean
-	if rig.Chassis.Parent:GetAttribute("Wrecked") then
-		rig.Linear.Enabled = false
-		rig.Align.Enabled = false
-		spinRotors(rig, false)
-		return true
-	end
-	return false
-end
-
-function AircraftBuilder.updatePlane(rig, dt: number)
-	if crashed(rig) then
-		return
-	end
-	local def, st, seat = rig.Def, rig.State, rig.Seat
-	rig.Linear.Enabled = true
-	rig.Align.Enabled = true
-	spinRotors(rig, true)
-
-	local pitchIn = -seat.ThrottleFloat -- S で機首上げ
-	local steer = seat.SteerFloat
-	local grounded = isGrounded(rig)
-
-	st.throttle = math.clamp(st.throttle + rig.Lift * dt * 0.6, 0, 1)
-	st.speed = moveToward(st.speed, def.MaxSpeed * st.throttle, def.Accel * dt)
-
-	if grounded and st.speed < def.TakeoffSpeed then
-		st.pitch = lerp(st.pitch, 0, math.min(1, dt * 6)) -- 離陸速度まで機首は上がらない
-	else
-		st.pitch = math.clamp(st.pitch + pitchIn * def.PitchRate * dt, -1.2, 1.2)
-		if pitchIn == 0 then
-			st.pitch = lerp(st.pitch, 0, math.min(1, dt * 0.4))
-		end
-		if not grounded and st.speed < def.StallSpeed then
-			st.pitch = math.max(st.pitch - dt * 0.8, -1.2) -- 失速して機首が落ちる
-		end
-	end
-
-	st.yaw += -steer * def.YawRate * dt * (grounded and 0.4 or 1)
-	st.roll = lerp(st.roll, -steer * 0.7, math.min(1, dt * 4))
-
-	local heading = CFrame.Angles(0, st.yaw, 0) * CFrame.Angles(st.pitch, 0, 0)
-	rig.Align.CFrame = heading * CFrame.Angles(0, 0, st.roll)
-
-	local velocity = heading.LookVector * st.speed
-	if grounded and st.pitch <= 0.01 then
-		velocity = Vector3.new(velocity.X, math.min(rig.Chassis.AssemblyLinearVelocity.Y, 0), velocity.Z)
-	end
-	rig.Linear.VectorVelocity = velocity
-end
-
-function AircraftBuilder.updateHeli(rig, dt: number)
-	if crashed(rig) then
-		return
-	end
-	local def, st, seat = rig.Def, rig.State, rig.Seat
-	rig.Linear.Enabled = true
-	rig.Align.Enabled = true
-	spinRotors(rig, true)
-
-	local fwd = seat.ThrottleFloat
-	local steer = seat.SteerFloat
-	st.yaw += -steer * def.YawRate * dt
-	st.fwd = lerp(st.fwd, fwd, math.min(1, dt * 2))
-	st.climb = lerp(st.climb, rig.Lift, math.min(1, dt * 3))
-
-	local yawCF = CFrame.Angles(0, st.yaw, 0)
-	rig.Align.CFrame = yawCF * CFrame.Angles(-st.fwd * 0.25, 0, -steer * 0.25)
-	rig.Linear.VectorVelocity = yawCF.LookVector * (st.fwd * def.MaxSpeed) + Vector3.new(0, st.climb * def.ClimbSpeed, 0)
-end
-
--- 運転手がいなくなったら拘束を切る(重力で落ちる)
-function AircraftBuilder.idle(rig)
-	rig.Linear.Enabled = false
-	rig.Align.Enabled = false
-	spinRotors(rig, false)
-	local st = rig.State
-	st.speed, st.throttle, st.fwd, st.climb, st.pitch, st.roll = 0, 0, 0, 0, 0, 0
-	rig.Lift = 0
-	local _, yaw = rig.Chassis.CFrame:ToEulerAnglesYXZ()
-	st.yaw = yaw
 end
 
 return AircraftBuilder

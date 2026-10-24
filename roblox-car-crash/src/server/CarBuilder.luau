@@ -1,5 +1,3 @@
-local Config = require(game:GetService("ReplicatedStorage").Shared.Config)
-
 local CollectionService = game:GetService("CollectionService")
 
 local CarBuilder = {}
@@ -21,8 +19,6 @@ export type Rig = {
 	Motors: { HingeConstraint },
 	Steers: { HingeConstraint },
 	Deformables: { { Part: Part, Weld: Weld } },
-	Torque: number?,
-	Driven: boolean?,
 }
 
 local function attachment(parent: BasePart, position: Vector3, orientation: Vector3?): Attachment
@@ -148,6 +144,7 @@ function CarBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName: stri
 
 				-- Orientation (0,0,90): ヒンジ軸を X -> Y(縦軸)にする
 				local steer = Instance.new("HingeConstraint")
+				steer.Name = "SteerServo"
 				steer.Attachment0 = attachment(chassis, localPos, Vector3.new(0, 0, 90))
 				steer.Attachment1 = attachment(carrier, Vector3.zero, Vector3.new(0, 0, 90))
 				steer.ActuatorType = Enum.ActuatorType.Servo
@@ -162,6 +159,7 @@ function CarBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName: stri
 			end
 
 			local motor = Instance.new("HingeConstraint")
+			motor.Name = "DriveMotor"
 			motor.Attachment0 = attachment(mount, mountPos)
 			motor.Attachment1 = attachment(wheel, Vector3.zero)
 			motor.ActuatorType = Enum.ActuatorType.Motor
@@ -185,54 +183,11 @@ function CarBuilder.build(def, cf: CFrame, ownerUserId: number?, ownerName: stri
 		Steers = steers,
 		Deformables = deformables,
 	}
-	rig.Update = CarBuilder.update
-	rig.Idle = CarBuilder.coast
 	return model, rig
 end
 
 function CarBuilder.rideHeight(def): number
 	return def.WheelRadius + def.Size.Y / 2
-end
-
--- 共通インターフェース: 運転手がいる間、毎フレーム呼ばれる
-function CarBuilder.update(rig: Rig, _dt: number)
-	local wrecked = rig.Chassis.Parent:GetAttribute("Wrecked")
-	CarBuilder.drive(rig, wrecked and 0 or rig.Seat.ThrottleFloat, wrecked and 0 or rig.Seat.SteerFloat)
-end
-
--- VehicleSeat の入力から駆動輪・操舵輪を動かす(サーバーから毎フレーム呼ぶ)
-function CarBuilder.drive(rig: Rig, throttle: number, steer: number)
-	local def = rig.Def
-	local r = def.WheelRadius
-	if not rig.Torque then
-		rig.Torque = rig.Chassis.AssemblyMass * def.Accel * r / #rig.Motors * 1.5
-	end
-	rig.Driven = true
-
-	local speed = rig.Chassis.AssemblyLinearVelocity.Magnitude
-	for _, motor in rig.Motors do
-		if throttle ~= 0 then
-			motor.MotorMaxTorque = rig.Torque
-			motor.AngularVelocity = Config.DriveSign * -throttle * def.MaxSpeed / r
-		else
-			motor.MotorMaxTorque = 0 -- 惰性走行
-		end
-	end
-
-	local angle = -steer * Config.SteerSign * Config.MaxSteerAngle / (1 + speed / 50)
-	for _, hinge in rig.Steers do
-		hinge.TargetAngle = angle
-	end
-end
-
-function CarBuilder.coast(rig: Rig)
-	rig.Driven = false
-	for _, motor in rig.Motors do
-		motor.MotorMaxTorque = 0
-	end
-	for _, hinge in rig.Steers do
-		hinge.TargetAngle = 0
-	end
 end
 
 return CarBuilder

@@ -32,8 +32,9 @@ VehicleCatalog (shared)  乗り物のデータ。Kind = car / plane / heli
 EventCatalog   (shared)  イベントのデータ。クリア条件 = 統計(Stat)の目標値
 RingCourse     (shared)  空のリングコースの座標
 
-VehicleFactory ──► CarBuilder / AircraftBuilder    Kind ごとの生成と操縦(rig.Update / rig.Idle)
-VehicleService     スポーン、購入(イベント未クリアは拒否)、毎フレームの操縦
+VehicleFactory ──► CarBuilder / AircraftBuilder    Kind ごとの組み立てと塗装
+VehicleControl (shared)  操縦の計算。運転している本人の端末で毎フレーム実行(ガタつき防止)
+VehicleService     スポーン、購入(イベント未クリアは拒否)、物理担当の切り替え、塗装、速度の不正チェック
 DamageService      衝突検知・体力・報酬(乗り物の種類を問わない)
 PressService       プレス機 → EventService へ press_* を送る
 RingService        リング通過判定 → コイン、EventService へ ring_pass / course_clear
@@ -58,7 +59,9 @@ CoinService        コイン残高
 | `src/shared/VehicleCatalog.luau` | 車・飛行機・ヘリの定義 |
 | `src/shared/EventCatalog.luau` | イベントの定義 |
 | `src/shared/RingCourse.luau` | リングの座標 |
-| `src/server/VehicleFactory.luau` | 種類ごとのビルダーへの窓口 |
+| `src/shared/VehicleControl.luau` | 操縦ロジック(車・飛行機・ヘリ)。端末側で実行 |
+| `src/shared/Paints.luau` | 塗装色の一覧 |
+| `src/server/VehicleFactory.luau` | 種類ごとのビルダーへの窓口、塗装 |
 | `src/server/CarBuilder.luau` | 車体・タイヤ・ステア・駆動 |
 | `src/server/AircraftBuilder.luau` | 飛行機・ヘリ(アーケード式の飛行) |
 | `src/server/VehicleService.luau` | スポーン/購入/リセット、毎フレームの操縦 |
@@ -71,8 +74,9 @@ CoinService        コイン残高
 | `src/server/CoinService.luau` | コイン残高 |
 | `src/server/DataService.luau` | DataStore によるお金・所持車のセーブ |
 | `src/server/MapBuilder.luau` | テストマップ(道路、ジャンプ台、レンガ壁、巨大壁、ダミー車) |
-| `src/client/HUD.client.luau` | 所持金/コイン、速度・高度・体力、ガレージ、イベント一覧、通知 |
-| `src/client/Flight.client.luau` | 飛行機・ヘリの上下入力(E/Shift 上、Q/Ctrl 下) |
+| `src/client/HUD.client.luau` | 所持金/コイン、速度・高度・体力、ガレージ(国産車/海外車/飛行機・ヘリのタブ、色選び)、イベント、通知 |
+| `src/client/VehicleController.client.luau` | 運転中の操縦(端末側)、携帯用の上昇/下降/吊るボタン |
+| `src/client/Minimap.client.luau` | 右上の角の地図 |
 | `src/client/Effects.client.luau` | プレス時のカメラ揺れ |
 
 ## 収録内容
@@ -88,6 +92,20 @@ CoinService        コイン残高
 | Sky Ring Challenge | リング完走 1 回 | Sky Jet |
 | Heavy Lift | Sky Crane で 3 台吊る | Gunship、Tilt Rotor |
 | Domestic vs Import Showdown | 対決戦で勝った側に貢献 | Midship Blade、Wedge Supercar、Scarlet V8、Strike Fighter |
+
+## 携帯でのガタつき対策(仕組み)
+
+- **原因:** 以前は「操縦の計算 = サーバー」「物理の計算 = 運転者の端末」と分かれていた。サーバーの指示が通信の遅れで飛び飛びに届き、携帯ほど揺れが目立つ。
+- **対策:** 操縦の計算を `VehicleControl`(共通モジュール)にまとめ、**運転している本人の端末**で毎フレーム実行する。物理と操縦が同じ端末で回るので、遅れがなくなる。
+- 乗った瞬間に物理の担当をその人に渡し、降りたらサーバーに戻して動力を切る(`VehicleService` の Occupant 監視)。
+- 端末側で操縦するぶん、サーバーは速度が車種の限界を大きく超えたら物理を取り上げる(簡易チート対策)。
+- 携帯で飛行機・ヘリに乗ると、右下に「加速/上昇」「減速/下降」「吊る」ボタンが出る。
+
+## 色と地図
+
+- ガレージ上部の色見本で塗装を選べる(12 色 + 標準)。今乗っている乗り物もすぐ塗り直され、選んだ色はセーブされる。
+- 右上の角に地図。道路・プレス機(P)・リング(次に通るものは緑で番号つき)・自分(矢印)・他の人(赤い点)。
+- 標準のプレイヤー一覧は右上を占めるので隠している(`Config.HidePlayerList`)。地図の範囲は `MinimapCenter` / `MinimapRange`。
 
 ## 飛行機・ヘリの操作
 - 飛行機: `W/S` 機首下げ/上げ、`A/D` 旋回、`E/Shift` 加速、`Q/Ctrl` 減速。離陸速度まで加速すると機首が上がる。

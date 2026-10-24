@@ -3,6 +3,8 @@ local RunService = game:GetService("RunService")
 
 local Shared = game:GetService("ReplicatedStorage").Shared
 local Catalog = require(Shared.VehicleCatalog)
+local Paints = require(Shared.Paints)
+local VehicleControl = require(Shared.VehicleControl)
 local EventCatalog = require(Shared.EventCatalog)
 local Remotes = require(Shared.Remotes)
 
@@ -65,12 +67,30 @@ local function spawnCar(player: Player, carId: string, at: CFrame?)
 	local height = groundY + VehicleFactory.rideHeight(def) + 0.5
 	local cf = CFrame.new(root.Position.X, height, root.Position.Z) * CFrame.Angles(0, yaw, 0)
 
-	local model, rig = VehicleFactory.build(def, cf, player.UserId, player.Name)
+	local paint = Paints[dataService.getPaint(player)]
+	local model, rig = VehicleFactory.build(def, cf, player.UserId, player.Name, paint and paint.Color)
 	model.Parent = carsFolder
+	DamageService.attach(rig)
+
+	-- 物理の計算は「乗っている人の端末」に任せる(操縦も同じ端末で行うのでガタつかない)。
+	-- 降りたらサーバーに戻し、動力を切る。
+	local function updateOwner()
+		if not rig.Chassis.Parent or rig.Chassis.Anchored then
+			return
+		end
+		local occupant = rig.Seat.Occupant
+		local driver = occupant and Players:GetPlayerFromCharacter(occupant.Parent)
+		pcall(function()
+			rig.Chassis:SetNetworkOwner(driver)
+		end)
+		if not driver then
+			VehicleControl.idle(rig)
+		end
+	end
+	rig.Seat:GetPropertyChangedSignal("Occupant"):Connect(updateOwner)
 	pcall(function()
 		rig.Chassis:SetNetworkOwner(player)
 	end)
-	DamageService.attach(rig)
 
 	cars[player] = rig
 	lastCarId[player] = carId
@@ -132,22 +152,34 @@ function VehicleService.init(service)
 		lastSpawn[player] = nil
 	end)
 
-	-- 飛行機・ヘリの上下入力(クライアントから)。範囲を丸めて保存するだけ
-	Remotes.get("FlightAxis").OnServerEvent:Connect(function(player, axis)
+	-- 塗装: 番号を検証して保存し、今乗っている乗り物もすぐ塗り直す
+	Remotes.get("SetPaint").OnServerEvent:Connect(function(player, index)
+		if typeof(index) ~= "number" or index ~= math.floor(index) or index < 0 or index > #Paints then
+			return
+		end
+		dataService.setPaint(player, index)
 		local rig = cars[player]
-		if rig and typeof(axis) == "number" and axis == axis then
-			rig.Lift = math.clamp(axis, -1, 1)
+		if rig and rig.Chassis.Parent then
+			VehicleFactory.paint(rig.Chassis.Parent, index > 0 and Paints[index].Color or rig.Def.Color)
 		end
 	end)
 
+	-- 簡易チート対策: 操縦は端末側なので、車種の限界を大きく超える速度が出たら物理をサーバーに戻す
+	local elapsed = 0
 	RunService.Heartbeat:Connect(function(dt)
-		for _, rig in cars do
-			if rig.Seat.Occupant then
-				rig.Active = true
-				rig.Update(rig, dt)
-			elseif rig.Active then
-				rig.Active = false
-				rig.Idle(rig)
+		elapsed += dt
+		if elapsed < 0.5 then
+			return
+		end
+		elapsed = 0
+		for player, rig in cars do
+			local limit = rig.Def.MaxSpeed * 1.6 + 60
+			if rig.Seat.Occupant and rig.Chassis.AssemblyLinearVelocity.Magnitude > limit then
+				warn(`{player.Name}: {rig.Def.Id} over speed limit, taking physics back`)
+				pcall(function()
+					rig.Chassis:SetNetworkOwner(nil)
+				end)
+				rig.Chassis.AssemblyLinearVelocity = Vector3.zero
 			end
 		end
 	end)
