@@ -57,6 +57,13 @@ function VehicleControl.fromModel(model: Model, def, ignore: { Instance })
 			table.insert(rig.Rotors, { Hinge = d, Speed = d:GetAttribute("Speed") or 40 })
 		end
 	end
+	-- 後輪 = 操舵キャリアを介さず車体に直接つながっている駆動輪
+	rig.RearWheels = {}
+	for _, motor in rig.Motors do
+		if motor.Attachment0 and motor.Attachment0.Parent == chassis then
+			table.insert(rig.RearWheels, motor.Parent)
+		end
+	end
 	local params = RaycastParams.new()
 	params.FilterType = Enum.RaycastFilterType.Exclude
 	local filter = table.clone(ignore)
@@ -67,12 +74,112 @@ function VehicleControl.fromModel(model: Model, def, ignore: { Instance })
 end
 
 -- ===== 車 =====
-local function driveCar(rig, throttle: number, steer: number)
+
+-- ドリフト: 後輪のグリップを落として滑らせ、車体の回転を補助する。
+-- 摩擦の変更とタイヤスモークはこの端末だけの変更(物理はこの端末が計算しているので挙動には効く)。
+local function setDriftEffects(rig, on: boolean)
+	for _, wheel in rig.RearWheels or {} do
+		if on then
+			wheel:SetAttribute("GripFriction", wheel:GetAttribute("GripFriction") or wheel.CustomPhysicalProperties.Friction)
+			wheel.CustomPhysicalProperties = PhysicalProperties.new(1.5, Config.DriftRearFriction, 0, 100, 1)
+		elseif wheel:GetAttribute("GripFriction") then
+			wheel.CustomPhysicalProperties = PhysicalProperties.new(1.5, wheel:GetAttribute("GripFriction"), 0, 100, 1)
+		end
+		local smoke = wheel:FindFirstChild("DriftSmoke")
+		if on and not smoke then
+			smoke = Instance.new("ParticleEmitter")
+			smoke.Name = "DriftSmoke"
+			smoke.Color = ColorSequence.new(Color3.fromRGB(230, 230, 230))
+			smoke.Transparency = NumberSequence.new(0.4, 1)
+			smoke.Size = NumberSequence.new(1.5, 5)
+			smoke.Lifetime = NumberRange.new(0.6, 1.2)
+			smoke.Rate = 40
+			smoke.Speed = NumberRange.new(2, 5)
+			smoke.Parent = wheel
+		end
+		if smoke then
+			smoke.Enabled = on
+		end
+	end
+end
+
+local function stopDrift(rig)
+	local drift = rig.Drift
+	if drift and drift.Active then
+		drift.Active = false
+		drift.Time = 0
+		setDriftEffects(rig, false)
+	end
+end
+
+-- 直近のハンドル操作の履歴から「急な操作」を見つけてドリフトに入る/抜ける
+local function updateDrift(rig, dt: number, throttle: number, steer: number)
+	local drift = rig.Drift
+	if not drift then
+		drift = { Active = false, Time = 0, Clock = 0, History = {} }
+		rig.Drift = drift
+	end
+	drift.Clock += dt
+	local now = drift.Clock
+	local history = drift.History
+	table.insert(history, { now, steer })
+	while #history > 1 and now - history[1][1] > Config.DriftFlickWindow do
+		table.remove(history, 1)
+	end
+
+	local chassis = rig.Chassis
+	local velocity = chassis.AssemblyLinearVelocity
+	local speed = velocity.Magnitude
+	local forward = -chassis.CFrame:VectorToObjectSpace(velocity).Z
+
+	if drift.Active then
+		if math.abs(steer) < 0.2 or speed < Config.DriftExitSpeed then
+			stopDrift(rig)
+		end
+	elseif forward > Config.DriftMinSpeed then
+		-- 切り返し: 窓の中で逆向きに大きく振った
+		local flick = false
+		-- 急ハンドル: ごく短い時間に大きく切った(高速時のみ)
+		local snap = false
+		for _, entry in history do
+			local age, old = now - entry[1], entry[2]
+			if old * steer < 0 and math.abs(steer - old) >= Config.DriftFlickChange then
+				flick = true
+			end
+			if age <= Config.DriftSnapWindow and math.abs(steer - old) >= Config.DriftSnapChange then
+				snap = true
+			end
+		end
+		snap = snap and forward >= math.max(Config.DriftMinSpeed, rig.Def.MaxSpeed * Config.DriftSnapSpeedRatio)
+		-- ブレーキしながらハンドル
+		local brakeTurn = throttle <= -0.5 and math.abs(steer) > 0.5
+		if flick or snap or brakeTurn then
+			drift.Active = true
+			drift.Time = 0
+			setDriftEffects(rig, true)
+		end
+	end
+
+	if drift.Active then
+		drift.Time += dt
+		-- 車体の向きの回転を、ハンドルの向きに合わせて補助する(右に切ると右回り = Y軸まわりで負)
+		local up = chassis.CFrame.UpVector
+		local spin = chassis.AssemblyAngularVelocity
+		local current = spin:Dot(up)
+		local target = -steer * Config.DriftYawRate
+		chassis.AssemblyAngularVelocity = spin + up * ((target - current) * math.min(1, dt * Config.DriftYawResponse))
+	end
+end
+
+local function driveCar(rig, dt: number, throttle: number, steer: number)
 	local def = rig.Def
 	local r = def.WheelRadius
 	if not rig.Torque then
 		rig.Torque = rig.Chassis.AssemblyMass * def.Accel * r / math.max(#rig.Motors, 1) * 1.5
 	end
+	updateDrift(rig, dt, throttle, steer)
+	local drifting = rig.Drift and rig.Drift.Active
+
 	local speed = rig.Chassis.AssemblyLinearVelocity.Magnitude
 	for _, motor in rig.Motors do
 		if throttle ~= 0 then
@@ -82,7 +189,8 @@ local function driveCar(rig, throttle: number, steer: number)
 			motor.MotorMaxTorque = 0 -- 惰性走行
 		end
 	end
-	local angle = -steer * Config.SteerSign * Config.MaxSteerAngle / (1 + speed / 50)
+	-- ドリフト中はカウンターを当てやすいよう、速度でハンドルを弱めない
+	local angle = -steer * Config.SteerSign * Config.MaxSteerAngle / (drifting and 1 or (1 + speed / 50))
 	for _, hinge in rig.Steers do
 		hinge.TargetAngle = angle
 	end
@@ -164,7 +272,7 @@ function VehicleControl.update(rig, dt: number, input)
 		return
 	end
 	if rig.Kind == "car" then
-		driveCar(rig, input.Throttle, input.Steer)
+		driveCar(rig, dt, input.Throttle, input.Steer)
 	elseif rig.Kind == "plane" then
 		flyPlane(rig, dt, input)
 	else
@@ -174,6 +282,7 @@ end
 
 -- 降りたとき・壊れたときに動力を切る
 function VehicleControl.idle(rig)
+	stopDrift(rig)
 	for _, motor in rig.Motors or {} do
 		motor.MotorMaxTorque = 0
 	end
@@ -193,5 +302,10 @@ function VehicleControl.idle(rig)
 end
 
 VehicleControl.rideHeight = rideHeight
+
+-- ドリフト中なら経過秒数、そうでなければ nil(画面表示用)
+function VehicleControl.driftTime(rig): number?
+	return rig.Drift and rig.Drift.Active and rig.Drift.Time or nil
+end
 
 return VehicleControl

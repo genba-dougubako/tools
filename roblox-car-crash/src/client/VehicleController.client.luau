@@ -70,6 +70,23 @@ winchButton.Activated:Connect(function()
 	winchRemote:FireServer()
 end)
 
+-- ドリフト表示
+local driftLabel = Instance.new("TextLabel")
+driftLabel.AnchorPoint = Vector2.new(0.5, 1)
+driftLabel.Position = UDim2.new(0.5, 0, 1, -90)
+driftLabel.Size = UDim2.fromOffset(260, 40)
+driftLabel.BackgroundTransparency = 1
+driftLabel.Font = Enum.Font.GothamBlack
+driftLabel.TextScaled = true
+driftLabel.TextColor3 = Color3.fromRGB(255, 120, 200)
+driftLabel.TextStrokeTransparency = 0.3
+driftLabel.Visible = false
+local driftGui = Instance.new("ScreenGui")
+driftGui.Name = "DriftHUD"
+driftGui.ResetOnSpawn = false
+driftGui.Parent = player:WaitForChild("PlayerGui")
+driftLabel.Parent = driftGui
+
 -- ===== 乗っている乗り物を探す =====
 local function currentVehicle(): Model?
 	local humanoid = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
@@ -109,6 +126,7 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 	if not rig then
 		gui.Enabled = false
+		driftLabel.Visible = false
 		return
 	end
 	if model:GetAttribute("Crushing") or rig.Chassis.Anchored then
@@ -120,6 +138,12 @@ RunService.Heartbeat:Connect(function(dt)
 		Steer = rig.Seat.SteerFloat,
 		Lift = liftInput(),
 	})
+
+	local drift = VehicleControl.driftTime(rig)
+	driftLabel.Visible = drift ~= nil
+	if drift then
+		driftLabel.Text = string.format("DRIFT %.1fs", drift)
+	end
 end)
 
 -- F: ウインチ(吊れる機体かどうかはサーバーが判定)
