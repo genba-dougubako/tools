@@ -1,4 +1,7 @@
 return {
+	GameTitle = "CRUSH & FLY",
+	GameSubtitle = "クラッシュ＆フライ",
+
 	StartCash = 500,
 	StartCars = { "sedan", "trainer" },
 

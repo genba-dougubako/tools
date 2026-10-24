@@ -9,6 +9,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Catalog = require(Shared:WaitForChild("VehicleCatalog"))
 local EventCatalog = require(Shared:WaitForChild("EventCatalog"))
 local Paints = require(Shared:WaitForChild("Paints"))
+local Config = require(Shared:WaitForChild("Config"))
 local Remotes = require(Shared:WaitForChild("Remotes"))
 
 local player = Players.LocalPlayer
@@ -90,6 +91,33 @@ local function formatMoney(n: number): string
 end
 
 local gui = new("ScreenGui", { Name = "CarCrashHUD", ResetOnSpawn = false, IgnoreGuiInset = false }, player:WaitForChild("PlayerGui"))
+
+-- ===== 入ったときのタイトル表示(3 秒で消える) =====
+do
+	local title = text({
+		AnchorPoint = Vector2.new(0.5, 0.5),
+		Position = UDim2.fromScale(0.5, 0.4),
+		Size = UDim2.fromScale(0.6, 0.14),
+		Text = Config.GameTitle,
+		Font = Enum.Font.GothamBlack,
+		TextStrokeTransparency = 0,
+		TextStrokeColor3 = Color3.fromRGB(20, 33, 61),
+	}, gui)
+	local subtitle = text({
+		AnchorPoint = Vector2.new(0.5, 0),
+		Position = UDim2.fromScale(0.5, 0.48),
+		Size = UDim2.fromScale(0.4, 0.06),
+		Text = Config.GameSubtitle,
+		TextColor3 = Color3.fromRGB(255, 210, 58),
+		TextStrokeTransparency = 0,
+	}, gui)
+	task.delay(3, function()
+		for _, label in { title, subtitle } do
+			TweenService:Create(label, TweenInfo.new(0.8), { TextTransparency = 1, TextStrokeTransparency = 1 }):Play()
+			Debris:AddItem(label, 1)
+		end
+	end)
+end
 
 -- ===== 上部: 現金 / コイン / 対決戦 / リング =====
 local cashLabel = text({ Position = UDim2.new(0.5, -110, 0, 6), Size = UDim2.fromOffset(220, 32), TextColor3 = Color3.fromRGB(120, 255, 120) }, gui)
